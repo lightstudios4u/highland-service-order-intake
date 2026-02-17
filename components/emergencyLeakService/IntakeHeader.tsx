@@ -14,21 +14,22 @@ export default function IntakeHeader() {
         <div className="absolute inset-0 bg-slate-900/75" />
       </div>
 
-      <div className="relative z-10 mb-4 flex items-center justify-between gap-4">
+      <div className="relative z-10 mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Image
           src="/New-Logo-Final-White-1.svg"
           alt="Highland Commercial Roofing"
           width={210}
           height={42}
+          className="h-auto w-[180px] sm:w-[210px]"
           priority
         />
-        <p className="bg-[#2f9750] px-4 py-2 text-right text-lg font-semibold uppercase tracking-[0.14em] text-white md:text-xl">
+        <p className="bg-[#2f9750] px-4 py-2 text-left text-sm font-semibold uppercase tracking-[0.14em] text-white sm:text-right sm:text-base md:text-lg">
           Emergency Service Intake
         </p>
       </div>
 
       <div className="relative z-10 border-t border-slate-700 pt-5">
-        <h1 className="inline-block bg-red-900/35 px-3 py-2 text-3xl font-bold leading-tight text-red-100 md:text-4xl">
+        <h1 className="inline-block bg-red-900/35 px-3 py-2 text-2xl font-bold leading-tight text-red-100 sm:text-3xl md:text-4xl">
           Request Emergency Leak Service
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200 md:text-base">

@@ -28,7 +28,7 @@ export default function BillingInfoSection({
       </h2>
       <FormInput
         id="billingEntityBillToName"
-        label="Entity Bill To Name"
+        label="Bill To Name"
         value={formData.billingEntityBillToName}
         onChange={handleInput("billingEntityBillToName")}
         error={errors.billingEntityBillToName}

@@ -10,6 +10,8 @@ export type LeakNearTypeName =
 export type RoofPitchTypeName = "FlatRoof" | "SteepShingleTile";
 
 export type LeakingProperty = {
+  dynamoId: number | null;
+  jobNo: string;
   siteName: string;
   siteAddress: string;
   siteAddress2: string;
@@ -35,10 +37,13 @@ export type LeakingProperty = {
 
 export type IntakeFormData = {
   leakingProperties: LeakingProperty[];
+  clientDynamoAccountId: number | null;
+  clientDynamoCountId: number | null;
   clientAccountName: string;
   clientAccountContactName: string;
   clientEmail: string;
   clientPhone: string;
+  billingDynamoId: number | null;
   billingEntityBillToName: string;
   billingBillToAddress: string;
   billingBillToAddress2: string;
@@ -69,6 +74,8 @@ export type PrefillLookupResponse = {
 };
 
 export type ClientInfoPayload = {
+  DynamoAccountId?: number | null;
+  DynamoCountId?: number | null;
   AccountName: string;
   AccountContactName: string;
   Email: string;
@@ -76,6 +83,7 @@ export type ClientInfoPayload = {
 };
 
 export type BillingInfoPayload = {
+  DynamoId?: number | null;
   EntityBillToName: string;
   BillToAddress: string;
   BillToAddress2: string;
@@ -85,6 +93,8 @@ export type BillingInfoPayload = {
 };
 
 export type LeakDetailsPayload = {
+  DynamoId?: number | null;
+  JobNo?: string;
   SiteName: string;
   SiteAddress: string;
   SiteAddress2: string;
@@ -116,19 +126,36 @@ export type ServiceOrderRequestPayload = {
   additionalLeaks: LeakDetailsPayload[];
 };
 
-export type ServiceOrderLookupItem = {
+export type ServiceOrderResponsePayload = {
   Id: number;
   RequestDate: string;
-  Client: ClientInfoPayload;
-  Billing: BillingInfoPayload;
-  LeakDetails: LeakDetailsPayload;
-  AdditionalLeaks: LeakDetailsPayload[];
+  Clients: ClientInfoPayload[];
+  BillingInfos: BillingInfoPayload[];
+  LeakDetails: LeakDetailsPayload[];
+  CreatedAt: string;
+  UpdatedAt?: string | null;
 };
+
+export type ServiceIntakeRequestPayload = {
+  JobNo: string;
+  EmailAddress: string;
+  City: string;
+  Zip: string;
+};
+
+export type ServiceIntakeResponse =
+  | ServiceOrderResponsePayload
+  | ServiceOrderResponsePayload[];
 
 export type ServiceOrderLookupResponse = {
   clients: ClientInfoPayload[];
   billings: BillingInfoPayload[];
   leaks: LeakDetailsPayload[];
-  serviceOrders: ServiceOrderLookupItem[];
+  serviceOrders: ServiceOrderResponsePayload[];
   message?: string;
+};
+
+export type SubmitServiceOrderResponse = {
+  message: string;
+  requestId: string;
 };

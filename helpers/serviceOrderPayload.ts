@@ -8,6 +8,8 @@ function toLeakDetailsPayload(
   property: IntakeFormData["leakingProperties"][number],
 ): LeakDetailsPayload {
   return {
+    DynamoId: property.dynamoId,
+    JobNo: property.jobNo,
     SiteName: property.siteName,
     SiteAddress: property.siteAddress,
     SiteAddress2: property.siteAddress2,
@@ -40,12 +42,15 @@ export function buildServiceOrderRequestPayload(
   return {
     requestDate: new Date().toISOString(),
     client: {
+      DynamoAccountId: formData.clientDynamoAccountId,
+      DynamoCountId: formData.clientDynamoCountId,
       AccountName: formData.clientAccountName,
       AccountContactName: formData.clientAccountContactName,
       Email: formData.clientEmail,
       Phone: formData.clientPhone,
     },
     billing: {
+      DynamoId: formData.billingDynamoId,
       EntityBillToName: formData.billingEntityBillToName,
       BillToAddress: formData.billingBillToAddress,
       BillToAddress2: formData.billingBillToAddress2,

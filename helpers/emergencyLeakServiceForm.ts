@@ -5,6 +5,8 @@ import {
 } from "@/types/emergencyLeakService";
 
 export const EMPTY_PROPERTY: LeakingProperty = {
+  dynamoId: null,
+  jobNo: "",
   siteName: "",
   siteAddress: "",
   siteAddress2: "",
@@ -30,16 +32,68 @@ export const EMPTY_PROPERTY: LeakingProperty = {
 
 export const INITIAL_FORM_DATA: IntakeFormData = {
   leakingProperties: [{ ...EMPTY_PROPERTY }],
+  clientDynamoAccountId: null,
+  clientDynamoCountId: null,
   clientAccountName: "",
   clientAccountContactName: "",
   clientEmail: "",
   clientPhone: "",
+  billingDynamoId: null,
   billingEntityBillToName: "",
   billingBillToAddress: "",
   billingBillToAddress2: "",
   billingBillToCity: "",
   billingBillToZip: "",
   billingBillToEmail: "",
+};
+
+export const MOCK_FORM_DATA: IntakeFormData = {
+  clientDynamoAccountId: 55001,
+  clientDynamoCountId: 9911,
+  clientAccountName: "Acme Retail Centers",
+  clientAccountContactName: "Jordan Smith",
+  clientEmail: "jordan.smith@acmeretail.com",
+  clientPhone: "303-555-0199",
+  billingDynamoId: 88001,
+  billingEntityBillToName: "Acme AP Department",
+  billingBillToAddress: "100 Market Street",
+  billingBillToAddress2: "Suite 240",
+  billingBillToCity: "Denver",
+  billingBillToZip: "80202",
+  billingBillToEmail: "ap@acmeretail.com",
+  leakingProperties: [
+    {
+      dynamoId: 77001,
+      jobNo: "ELS-26-01-0001",
+      siteName: "Acme North Plaza",
+      siteAddress: "4550 W 38th Ave",
+      siteAddress2: "Rear Service Entrance",
+      siteCity: "Denver",
+      siteZip: "80212",
+      tenantBusinessName: "North Plaza Liquor",
+      tenantContactName: "Chris Ramirez",
+      tenantContactPhone: "720-555-0141",
+      tenantContactCell: "720-555-0191",
+      tenantContactEmail: "chris.ramirez@tenantco.com",
+      hoursOfOperation: "7:00 AM - 10:00 PM",
+      leakLocation: "Middle",
+      leakNear: "HVACDuct",
+      leakNearOther: "",
+      hasAccessCode: true,
+      accessCode: "2468",
+      isSaturdayAccessPermitted: true,
+      isKeyRequired: false,
+      isLadderRequired: true,
+      roofPitch: "FlatRoof",
+      comments:
+        "Water intrusion over retail aisle during heavy rain. Please call tenant before arrival.",
+    },
+  ],
+};
+
+export const MOCK_LOOKUP_VALUES = {
+  serviceOrderNumber: "ELS-26-01-0001",
+  email: "jordan.smith@acmeretail.com",
 };
 
 function isEmail(value: string) {

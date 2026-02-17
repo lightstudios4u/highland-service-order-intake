@@ -1,11 +1,17 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   INITIAL_FORM_DATA,
+  MOCK_FORM_DATA,
+  MOCK_LOOKUP_VALUES,
   validateEmergencyLeakServiceForm,
 } from "@/helpers/emergencyLeakServiceForm";
-import { submitServiceOrderRequest } from "@/helpers/serviceOrderApi";
+import {
+  lookupServiceIntake,
+  submitServiceOrderRequest,
+} from "@/helpers/serviceOrderApi";
 import { buildServiceOrderRequestPayload } from "@/helpers/serviceOrderPayload";
 import {
   BillingInfoPayload,
@@ -13,6 +19,7 @@ import {
   IntakeFormData,
   LeakDetailsPayload,
   LeakingProperty,
+  ServiceIntakeRequestPayload,
   ServiceOrderLookupResponse,
   ValidationErrors,
 } from "@/types/emergencyLeakService";
@@ -22,6 +29,14 @@ import BillingInfoSection from "@/components/emergencyLeakService/BillingInfoSec
 
 type EmergencyLeakServiceFormProps = {
   className?: string;
+};
+
+const DRAFT_STORAGE_KEY = "emergency-leak-service-intake-draft-v1";
+
+type EmergencyLeakServiceDraft = {
+  formData: IntakeFormData;
+  serviceOrderLookupValue: string;
+  emailLookupValue: string;
 };
 
 export default function EmergencyLeakServiceForm({
@@ -34,8 +49,12 @@ export default function EmergencyLeakServiceForm({
   const [lookupResults, setLookupResults] =
     useState<ServiceOrderLookupResponse | null>(null);
   const [lookupMessage, setLookupMessage] = useState("");
-  const [isLookingUp] = useState(false);
+  const [isLookingUp, setIsLookingUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [submitRequestId, setSubmitRequestId] = useState("");
+  const [submitSuccessMessage, setSubmitSuccessMessage] = useState("");
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [submitState, setSubmitState] = useState<"idle" | "success" | "error">(
     "idle",
   );
@@ -44,6 +63,56 @@ export default function EmergencyLeakServiceForm({
     () => formData.leakingProperties[0],
     [formData.leakingProperties],
   );
+
+  useEffect(() => {
+    try {
+      const rawDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!rawDraft) {
+        return;
+      }
+
+      const parsedDraft = JSON.parse(
+        rawDraft,
+      ) as Partial<EmergencyLeakServiceDraft>;
+
+      if (parsedDraft.formData) {
+        const draftProperty = parsedDraft.formData.leakingProperties?.[0];
+
+        setFormData({
+          ...INITIAL_FORM_DATA,
+          ...parsedDraft.formData,
+          leakingProperties: [
+            {
+              ...INITIAL_FORM_DATA.leakingProperties[0],
+              ...(draftProperty ?? {}),
+            },
+          ],
+        });
+      }
+
+      if (typeof parsedDraft.serviceOrderLookupValue === "string") {
+        setServiceOrderLookupValue(parsedDraft.serviceOrderLookupValue);
+      }
+
+      if (typeof parsedDraft.emailLookupValue === "string") {
+        setEmailLookupValue(parsedDraft.emailLookupValue);
+      }
+
+      setLookupMessage("Restored saved draft.");
+    } catch {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    const draft: EmergencyLeakServiceDraft = {
+      formData,
+      serviceOrderLookupValue,
+      emailLookupValue,
+    };
+
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  }, [emailLookupValue, formData, serviceOrderLookupValue]);
 
   function updateField<K extends keyof IntakeFormData>(
     field: K,
@@ -84,6 +153,8 @@ export default function EmergencyLeakServiceForm({
 
   function applyClientSelection(client: ClientInfoPayload) {
     applyPrefillData({
+      clientDynamoAccountId: client.DynamoAccountId ?? null,
+      clientDynamoCountId: client.DynamoCountId ?? null,
       clientAccountName: client.AccountName,
       clientAccountContactName: client.AccountContactName,
       clientEmail: client.Email,
@@ -93,6 +164,7 @@ export default function EmergencyLeakServiceForm({
 
   function applyBillingSelection(billing: BillingInfoPayload) {
     applyPrefillData({
+      billingDynamoId: billing.DynamoId ?? null,
       billingEntityBillToName: billing.EntityBillToName,
       billingBillToAddress: billing.BillToAddress,
       billingBillToAddress2: billing.BillToAddress2,
@@ -106,6 +178,8 @@ export default function EmergencyLeakServiceForm({
     applyPrefillData({
       leakingProperties: [
         {
+          dynamoId: leak.DynamoId ?? null,
+          jobNo: leak.JobNo ?? "",
           siteName: leak.SiteName,
           siteAddress: leak.SiteAddress,
           siteAddress2: leak.SiteAddress2,
@@ -132,15 +206,75 @@ export default function EmergencyLeakServiceForm({
     });
   }
 
-  function handleLookupByServiceOrder() {
-    return;
+  async function performLookup(payload: ServiceIntakeRequestPayload) {
+    setIsLookingUp(true);
+    setLookupMessage("");
+
+    try {
+      const result = await lookupServiceIntake(payload);
+      setLookupResults(result);
+
+      if (result.serviceOrders.length === 0) {
+        setLookupMessage(result.message ?? "No matching records were found.");
+      } else {
+        setLookupMessage(
+          result.message ??
+            `Found ${result.serviceOrders.length} possible match${result.serviceOrders.length === 1 ? "" : "es"}.`,
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Lookup request failed.";
+      setLookupResults(null);
+      setLookupMessage(message);
+    } finally {
+      setIsLookingUp(false);
+    }
   }
 
-  function handleLookupByEmail() {
-    return;
+  async function handleLookupByServiceOrder() {
+    await performLookup({
+      JobNo: serviceOrderLookupValue.trim(),
+      EmailAddress: "",
+      City: activeProperty.siteCity.trim(),
+      Zip: activeProperty.siteZip.trim(),
+    });
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleLookupByEmail() {
+    await performLookup({
+      JobNo: "",
+      EmailAddress: emailLookupValue.trim(),
+      City: activeProperty.siteCity.trim(),
+      Zip: activeProperty.siteZip.trim(),
+    });
+  }
+
+  async function confirmSubmit() {
+    setIsSubmitting(true);
+
+    try {
+      const payload = buildServiceOrderRequestPayload(formData);
+      const submitResult = await submitServiceOrderRequest(payload);
+
+      setSubmitState("success");
+      setSubmitRequestId(submitResult.requestId);
+      setSubmitSuccessMessage(submitResult.message);
+      setIsConfirmModalOpen(false);
+      setIsSuccessModalOpen(true);
+      setFormData(INITIAL_FORM_DATA);
+      setErrors({});
+      setLookupResults(null);
+      setLookupMessage("");
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      setSubmitState("error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitState("idle");
 
@@ -151,22 +285,32 @@ export default function EmergencyLeakServiceForm({
       return;
     }
 
-    setIsSubmitting(true);
+    setIsConfirmModalOpen(true);
+  }
 
-    try {
-      const payload = buildServiceOrderRequestPayload(formData);
-      await submitServiceOrderRequest(payload);
+  function prefillMockData() {
+    setFormData(MOCK_FORM_DATA);
+    setServiceOrderLookupValue(MOCK_LOOKUP_VALUES.serviceOrderNumber);
+    setEmailLookupValue(MOCK_LOOKUP_VALUES.email);
+    setErrors({});
+    setLookupResults(null);
+    setLookupMessage("Mock data loaded.");
+    setSubmitState("idle");
+    setIsConfirmModalOpen(false);
+    setIsSuccessModalOpen(false);
+  }
 
-      setSubmitState("success");
-      setFormData(INITIAL_FORM_DATA);
-      setErrors({});
-      setLookupResults(null);
-      setLookupMessage("");
-    } catch {
-      setSubmitState("error");
-    } finally {
-      setIsSubmitting(false);
-    }
+  function clearForm() {
+    setFormData(INITIAL_FORM_DATA);
+    setServiceOrderLookupValue("");
+    setEmailLookupValue("");
+    setErrors({});
+    setLookupResults(null);
+    setLookupMessage("Form cleared.");
+    setSubmitState("idle");
+    setIsConfirmModalOpen(false);
+    setIsSuccessModalOpen(false);
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
   }
 
   return (
@@ -190,6 +334,7 @@ export default function EmergencyLeakServiceForm({
             name="lookupServiceOrderNumber"
             value={serviceOrderLookupValue}
             onChange={(event) => setServiceOrderLookupValue(event.target.value)}
+            placeholder="ELS-26-##-####"
             className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
           />
           <button
@@ -305,6 +450,12 @@ export default function EmergencyLeakServiceForm({
         onFieldChange={updateField}
       />
 
+      <BillingInfoSection
+        formData={formData}
+        errors={errors}
+        onFieldChange={updateField}
+      />
+
       <LeakingPropertySection
         property={activeProperty}
         errors={errors}
@@ -320,13 +471,21 @@ export default function EmergencyLeakServiceForm({
         </button>
       </div>
 
-      <BillingInfoSection
-        formData={formData}
-        errors={errors}
-        onFieldChange={updateField}
-      />
-
       <div className="flex flex-col gap-3 border-t border-slate-300 pt-6 md:flex-row md:justify-end">
+        <button
+          type="button"
+          onClick={clearForm}
+          className="inline-flex items-center justify-center rounded-md border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+        >
+          Clear Form
+        </button>
+        <button
+          type="button"
+          onClick={prefillMockData}
+          className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+        >
+          Prefill Mock Data
+        </button>
         <button
           type="submit"
           disabled={isSubmitting}
@@ -336,10 +495,72 @@ export default function EmergencyLeakServiceForm({
         </button>
       </div>
 
-      {submitState === "success" ? (
-        <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-          Request submitted successfully.
-        </p>
+      {isConfirmModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <p className="text-base font-bold text-slate-900">
+              Confirm Submission
+            </p>
+            <p className="mt-3 text-sm text-slate-700">
+              Are you sure information is correct and you want to submit this
+              emergency leak inspection form?
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                disabled={isSubmitting}
+                className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmSubmit}
+                disabled={isSubmitting}
+                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? "Submitting..." : "Yes, Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isSuccessModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+          <div className="w-full max-w-md rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xl">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/New-Logo-Final-White-1.svg"
+                alt="Highland Commercial Roofing"
+                width={140}
+                height={28}
+                className="rounded bg-emerald-700 px-2 py-1"
+              />
+              <p className="text-base font-bold text-emerald-800">
+                Request Submitted
+              </p>
+            </div>
+            <p className="mt-4 text-sm text-emerald-900">
+              {submitSuccessMessage ||
+                "Your emergency service request was submitted successfully."}
+            </p>
+            <p className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm text-emerald-900">
+              Reference ID:{" "}
+              <span className="font-bold">{submitRequestId || "Pending"}</span>
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsSuccessModalOpen(false)}
+                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {submitState === "error" ? (

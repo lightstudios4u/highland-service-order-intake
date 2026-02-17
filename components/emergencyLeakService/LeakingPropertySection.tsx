@@ -189,64 +189,70 @@ export default function LeakingPropertySection({
           </select>
         </label>
 
-        <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <input
-            type="checkbox"
-            checked={property.hasAccessCode}
-            onChange={(event) =>
-              onPropertyChange("hasAccessCode", event.target.checked)
-            }
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-          />
-          Has Access Code
-        </label>
+        <div className="md:col-start-2">
+          <div className="flex w-full flex-col gap-2 rounded-md border border-slate-200 p-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={property.hasAccessCode}
+                onChange={(event) =>
+                  onPropertyChange("hasAccessCode", event.target.checked)
+                }
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Has Access Code
+            </label>
 
-        <FormInput
-          id="accessCode"
-          label="Access Code"
-          value={property.accessCode}
-          onChange={handleInput("accessCode")}
-          error={errors.accessCode}
-        />
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={property.isSaturdayAccessPermitted}
+                onChange={(event) =>
+                  onPropertyChange(
+                    "isSaturdayAccessPermitted",
+                    event.target.checked,
+                  )
+                }
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Saturday Access Permitted
+            </label>
 
-        <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <input
-            type="checkbox"
-            checked={property.isSaturdayAccessPermitted}
-            onChange={(event) =>
-              onPropertyChange(
-                "isSaturdayAccessPermitted",
-                event.target.checked,
-              )
-            }
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-          />
-          Saturday Access Permitted
-        </label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={property.isKeyRequired}
+                onChange={(event) =>
+                  onPropertyChange("isKeyRequired", event.target.checked)
+                }
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Key Required
+            </label>
 
-        <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <input
-            type="checkbox"
-            checked={property.isKeyRequired}
-            onChange={(event) =>
-              onPropertyChange("isKeyRequired", event.target.checked)
-            }
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-          />
-          Key Required
-        </label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={property.isLadderRequired}
+                onChange={(event) =>
+                  onPropertyChange("isLadderRequired", event.target.checked)
+                }
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Ladder Required
+            </label>
+          </div>
+        </div>
 
-        <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <input
-            type="checkbox"
-            checked={property.isLadderRequired}
-            onChange={(event) =>
-              onPropertyChange("isLadderRequired", event.target.checked)
-            }
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+        <div className="md:col-start-2">
+          <FormInput
+            id="accessCode"
+            label="Access Code"
+            value={property.accessCode}
+            onChange={handleInput("accessCode")}
+            error={errors.accessCode}
           />
-          Ladder Required
-        </label>
+        </div>
 
         <FormTextarea
           id="comments"
