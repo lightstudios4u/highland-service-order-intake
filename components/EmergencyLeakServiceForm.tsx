@@ -161,9 +161,6 @@ export default function EmergencyLeakServiceForm({
       clientEmail: client.Email,
       clientPhone: client.Phone,
     });
-    setIsLookupOpen(false);
-    setLookupResults(null);
-    setLookupMessage("Contact info prefilled.");
   }
 
   function applyBillingSelection(billing: BillingInfoPayload) {
@@ -176,9 +173,6 @@ export default function EmergencyLeakServiceForm({
       billingBillToZip: billing.BillToZip,
       billingBillToEmail: billing.BillToEmail,
     });
-    setIsLookupOpen(false);
-    setLookupResults(null);
-    setLookupMessage("Billing info prefilled.");
   }
 
   function applyLeakSelection(leak: LeakDetailsPayload) {
@@ -211,9 +205,6 @@ export default function EmergencyLeakServiceForm({
         },
       ],
     });
-    setIsLookupOpen(false);
-    setLookupResults(null);
-    setLookupMessage("Property info prefilled.");
   }
 
   async function performLookup(payload: ServiceIntakeRequestPayload) {
