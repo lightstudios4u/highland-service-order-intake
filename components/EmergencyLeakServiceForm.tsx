@@ -438,7 +438,7 @@ export default function EmergencyLeakServiceForm({
                 className="rounded-md border border-slate-200 p-3"
               >
                 <p className="text-sm font-semibold text-slate-900">
-                  Client: {client.AccountName}
+                  Contact: {client.AccountName}
                 </p>
                 <p className="text-xs text-slate-600">
                   {client.AccountContactName} · {client.Email}
@@ -448,7 +448,7 @@ export default function EmergencyLeakServiceForm({
                   onClick={() => applyClientSelection(client)}
                   className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                 >
-                  Prefill Client
+                  Prefill Contact
                 </button>
               </div>
             ))}
