@@ -448,31 +448,48 @@ export default function EmergencyLeakServiceForm({
                   onClick={() => applyClientSelection(client)}
                   className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                 >
-                  Use Client
+                  Prefill Client
                 </button>
               </div>
             ))}
 
-            {lookupResults.billings.map((billing, index) => (
-              <div
-                key={`billing-${index}`}
-                className="rounded-md border border-slate-200 p-3"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  Billing: {billing.EntityBillToName}
-                </p>
-                <p className="text-xs text-slate-600">
-                  {billing.BillToAddress} {billing.BillToCity}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => applyBillingSelection(billing)}
-                  className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                  Use Billing
-                </button>
-              </div>
-            ))}
+            {(() => {
+              const billings = lookupResults.billings;
+              if (billings.length === 0) return null;
+              const merged: BillingInfoPayload =
+                billings.length === 1
+                  ? billings[0]
+                  : billings.reduce<BillingInfoPayload>(
+                      (acc, b) => ({
+                        DynamoId: acc.DynamoId ?? b.DynamoId,
+                        EntityBillToName:
+                          acc.EntityBillToName || b.EntityBillToName,
+                        BillToAddress: acc.BillToAddress || b.BillToAddress,
+                        BillToAddress2: acc.BillToAddress2 || b.BillToAddress2,
+                        BillToCity: acc.BillToCity || b.BillToCity,
+                        BillToZip: acc.BillToZip || b.BillToZip,
+                        BillToEmail: acc.BillToEmail || b.BillToEmail,
+                      }),
+                      {} as BillingInfoPayload,
+                    );
+              return (
+                <div className="rounded-md border border-slate-200 p-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Billing: {merged.EntityBillToName}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    {merged.BillToAddress} {merged.BillToCity}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => applyBillingSelection(merged)}
+                    className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                  >
+                    Prefill Billing
+                  </button>
+                </div>
+              );
+            })()}
 
             {lookupResults.leaks.map((leak, index) => (
               <div
@@ -480,7 +497,7 @@ export default function EmergencyLeakServiceForm({
                 className="rounded-md border border-slate-200 p-3"
               >
                 <p className="text-sm font-semibold text-slate-900">
-                  Leak: {leak.SiteName}
+                  Property: {leak.SiteName}
                 </p>
                 <p className="text-xs text-slate-600">
                   {leak.SiteAddress}, {leak.SiteCity}
@@ -490,7 +507,7 @@ export default function EmergencyLeakServiceForm({
                   onClick={() => applyLeakSelection(leak)}
                   className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                 >
-                  Use Leak Details
+                  Prefill Property
                 </button>
               </div>
             ))}
