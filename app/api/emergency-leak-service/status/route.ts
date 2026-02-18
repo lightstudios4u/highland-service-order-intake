@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.SERVICE_INTAKE_API_URL;
+const API_BASE_URL = `${process.env.SERVICE_INTAKE_API_URL}/api/ServiceIntake/GetServiceOrderStatus`;
 const API_KEY = process.env.SERVICE_INTAKE_API_KEY;
 
 /**
@@ -28,12 +28,8 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   }
-
-  // The lookup URL points to .../api/ServiceIntake/CustomerLookup.
-  // We need .../api/ServiceIntake/GetServiceOrderStatus, so we derive the
-  // base from the configured lookup URL.
-  const baseUrl = API_BASE_URL.replace(/\/CustomerLookup\/?$/i, "");
-  const statusUrl = `${baseUrl}/GetServiceOrderStatus?referenceId=${encodeURIComponent(referenceId.trim())}`;
+  
+    const statusUrl = `${API_BASE_URL}?referenceId=${encodeURIComponent(referenceId.trim())}`;
 
   try {
     const response = await fetch(statusUrl, {
