@@ -21,8 +21,7 @@ SERVICE_INTAKE_API_URL=https://hcr-staging.dukusolutions.com/ws/api/ServiceIntak
 SERVICE_INTAKE_API_KEY=<your-api-key>
 
 # Service Order Submission (Azure Function)
-SERVICE_ORDER_INTAKE_URL=https://dynamo-highland-functions.azurewebsites.net/api/service-order-intake
-SERVICE_ORDER_INTAKE_KEY=<your-function-key>
+SERVICE_ORDER_INTAKE_URL=https://dynamo-highland-functions.azurewebsites.net/api/service-order-intake?code=<dfdfdfdfd>
 ```
 
 ---
