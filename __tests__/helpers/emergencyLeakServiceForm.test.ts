@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   INITIAL_FORM_DATA,
   EMPTY_PROPERTY,
+  isFormDirty,
   validateEmergencyLeakServiceForm,
 } from "@/helpers/emergencyLeakServiceForm";
 import { IntakeFormData } from "@/types/emergencyLeakService";
@@ -125,5 +126,57 @@ describe("validateEmergencyLeakServiceForm", () => {
     // At minimum: clientAccountName, clientAccountContactName, clientEmail,
     // clientPhone, siteName, siteAddress, siteCity, siteZip
     expect(Object.keys(errors).length).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe("isFormDirty", () => {
+  it("returns false for pristine state", () => {
+    expect(isFormDirty(INITIAL_FORM_DATA, "", "")).toBe(false);
+  });
+
+  it("returns true when service order lookup has a value", () => {
+    expect(isFormDirty(INITIAL_FORM_DATA, "ELS-26-01-0001", "")).toBe(true);
+  });
+
+  it("returns true when email lookup has a value", () => {
+    expect(isFormDirty(INITIAL_FORM_DATA, "", "test@example.com")).toBe(true);
+  });
+
+  it("returns true when a top-level form field is changed", () => {
+    const data: IntakeFormData = {
+      ...INITIAL_FORM_DATA,
+      clientAccountName: "Acme Corp",
+      leakingProperties: [{ ...EMPTY_PROPERTY }],
+    };
+    expect(isFormDirty(data, "", "")).toBe(true);
+  });
+
+  it("returns true when a property field is changed", () => {
+    const data: IntakeFormData = {
+      ...INITIAL_FORM_DATA,
+      leakingProperties: [{ ...EMPTY_PROPERTY, siteName: "Test Site" }],
+    };
+    expect(isFormDirty(data, "", "")).toBe(true);
+  });
+
+  it("returns true when a boolean property field differs", () => {
+    const data: IntakeFormData = {
+      ...INITIAL_FORM_DATA,
+      leakingProperties: [{ ...EMPTY_PROPERTY, hasAccessCode: true }],
+    };
+    expect(isFormDirty(data, "", "")).toBe(true);
+  });
+
+  it("returns true when dynamo ID differs from initial", () => {
+    const data: IntakeFormData = {
+      ...INITIAL_FORM_DATA,
+      clientDynamoAccountId: 123,
+      leakingProperties: [{ ...EMPTY_PROPERTY }],
+    };
+    expect(isFormDirty(data, "", "")).toBe(true);
+  });
+
+  it("returns false when lookup values are whitespace only", () => {
+    expect(isFormDirty(INITIAL_FORM_DATA, "   ", "  ")).toBe(false);
   });
 });

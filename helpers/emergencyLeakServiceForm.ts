@@ -96,6 +96,83 @@ export const MOCK_LOOKUP_VALUES = {
   email: "jordan.smith@acmeretail.com",
 };
 
+export function isFormDirty(
+  formData: IntakeFormData,
+  serviceOrderLookupValue: string,
+  emailLookupValue: string,
+): boolean {
+  if (serviceOrderLookupValue.trim() || emailLookupValue.trim()) {
+    return true;
+  }
+
+  const initial = INITIAL_FORM_DATA;
+  const property = formData.leakingProperties[0];
+  const initialProperty = initial.leakingProperties[0];
+
+  const topLevelKeys: (keyof IntakeFormData)[] = [
+    "clientAccountName",
+    "clientAccountContactName",
+    "clientEmail",
+    "clientPhone",
+    "billingEntityBillToName",
+    "billingBillToAddress",
+    "billingBillToAddress2",
+    "billingBillToCity",
+    "billingBillToZip",
+    "billingBillToEmail",
+  ];
+
+  for (const key of topLevelKeys) {
+    if (formData[key] !== initial[key]) return true;
+  }
+
+  if (
+    formData.clientDynamoAccountId !== initial.clientDynamoAccountId ||
+    formData.clientDynamoCountId !== initial.clientDynamoCountId ||
+    formData.billingDynamoId !== initial.billingDynamoId
+  ) {
+    return true;
+  }
+
+  const propertyStringKeys: (keyof LeakingProperty)[] = [
+    "siteName",
+    "siteAddress",
+    "siteAddress2",
+    "siteCity",
+    "siteZip",
+    "tenantBusinessName",
+    "tenantContactName",
+    "tenantContactPhone",
+    "tenantContactCell",
+    "tenantContactEmail",
+    "hoursOfOperation",
+    "leakNearOther",
+    "accessCode",
+    "comments",
+    "jobNo",
+  ];
+
+  for (const key of propertyStringKeys) {
+    if (property[key] !== initialProperty[key]) return true;
+  }
+
+  if (
+    property.leakLocation !== initialProperty.leakLocation ||
+    property.leakNear !== initialProperty.leakNear ||
+    property.roofPitch !== initialProperty.roofPitch ||
+    property.hasAccessCode !== initialProperty.hasAccessCode ||
+    property.isSaturdayAccessPermitted !==
+      initialProperty.isSaturdayAccessPermitted ||
+    property.isKeyRequired !== initialProperty.isKeyRequired ||
+    property.isLadderRequired !== initialProperty.isLadderRequired ||
+    property.dynamoId !== initialProperty.dynamoId
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
