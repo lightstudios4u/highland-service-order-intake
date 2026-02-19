@@ -105,6 +105,13 @@ export default function EmergencyLeakServiceForm() {
   }, []);
 
   useEffect(() => {
+    if (lookupMessage === "Form cleared.") {
+      const timer = setTimeout(() => setLookupMessage(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lookupMessage]);
+
+  useEffect(() => {
     const draft: EmergencyLeakServiceDraft = {
       formData,
       serviceOrderLookupValue,
