@@ -90,7 +90,7 @@ export default function LeakingPropertySection({
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-300">
-      <div className="bg-[#f58a1f] px-4 py-3">
+      <div className="bg-[#2f9750] px-4 py-3">
         <h2 className="text-lg font-bold text-white">Property Info</h2>
       </div>
       <div className="bg-white p-4">
@@ -100,7 +100,7 @@ export default function LeakingPropertySection({
               options={options}
               onSelect={onPrefillLeak}
               onPreview={setPreviewData}
-              accentColor="orange"
+              accentColor="green"
             />
           </div>
         )}
@@ -167,6 +167,8 @@ export default function LeakingPropertySection({
             value={displayed.tenantContactPhone}
             onChange={handleInput("tenantContactPhone")}
             error={errors.tenantContactPhone}
+            type="tel"
+            placeholder="(555) 123-4567"
             previewing={isPreviewing}
           />
           <FormInput
@@ -175,6 +177,8 @@ export default function LeakingPropertySection({
             value={displayed.tenantContactCell}
             onChange={handleInput("tenantContactCell")}
             error={errors.tenantContactCell}
+            type="tel"
+            placeholder="(555) 123-4567"
             previewing={isPreviewing}
           />
           <FormInput

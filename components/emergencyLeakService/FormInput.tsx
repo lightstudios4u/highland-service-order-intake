@@ -1,12 +1,24 @@
 import { ChangeEvent } from "react";
 
+/**
+ * Formats a raw digit string into (XXX) XXX-XXXX as the user types.
+ */
+function formatPhoneNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 type FormInputProps = {
   id: string;
   label: string;
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   error?: string;
-  type?: "text" | "email";
+  type?: "text" | "email" | "tel";
+  placeholder?: string;
   previewing?: boolean;
 };
 
@@ -17,8 +29,24 @@ export function FormInput({
   onChange,
   error,
   type = "text",
+  placeholder,
   previewing = false,
 }: FormInputProps) {
+  const isTel = type === "tel";
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    if (isTel) {
+      const formatted = formatPhoneNumber(event.target.value);
+      const syntheticEvent = {
+        ...event,
+        target: { ...event.target, value: formatted },
+      } as ChangeEvent<HTMLInputElement>;
+      onChange(syntheticEvent);
+    } else {
+      onChange(event);
+    }
+  }
+
   return (
     <label
       className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
@@ -29,8 +57,10 @@ export function FormInput({
         id={id}
         name={id}
         value={value}
-        onChange={onChange}
-        type={type}
+        onChange={handleChange}
+        type={isTel ? "tel" : type}
+        inputMode={isTel ? "tel" : undefined}
+        placeholder={placeholder}
         className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${
           previewing
             ? "border-amber-300 bg-amber-50"

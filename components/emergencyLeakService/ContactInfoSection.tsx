@@ -95,6 +95,8 @@ export default function ContactInfoSection({
             value={displayed.clientPhone}
             onChange={handleInput("clientPhone")}
             error={errors.clientPhone}
+            type="tel"
+            placeholder="(555) 123-4567"
             previewing={isPreviewing}
           />
           <FormInput

@@ -62,7 +62,7 @@ export default function BillingInfoSection({
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-300">
-      <div className="bg-[#1e2a3a] px-4 py-3">
+      <div className="bg-[#2f9750] px-4 py-3">
         <h2 className="text-lg font-bold text-white">Billing Info</h2>
       </div>
       <div className="bg-white p-4">
@@ -72,7 +72,7 @@ export default function BillingInfoSection({
               options={options}
               onSelect={onPrefillBilling}
               onPreview={setPreviewData}
-              accentColor="navy"
+              accentColor="green"
             />
           </div>
         )}

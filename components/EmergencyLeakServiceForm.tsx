@@ -27,11 +27,8 @@ import {
 import LeakingPropertySection from "@/components/emergencyLeakService/LeakingPropertySection";
 import ContactInfoSection from "@/components/emergencyLeakService/ContactInfoSection";
 import BillingInfoSection from "@/components/emergencyLeakService/BillingInfoSection";
+import IntakeHeader from "@/components/emergencyLeakService/IntakeHeader";
 import OrderStatusPanel from "@/components/emergencyLeakService/OrderStatusPanel";
-
-type EmergencyLeakServiceFormProps = {
-  className?: string;
-};
 
 const DRAFT_STORAGE_KEY = "emergency-leak-service-intake-draft-v1";
 
@@ -41,9 +38,7 @@ type EmergencyLeakServiceDraft = {
   emailLookupValue: string;
 };
 
-export default function EmergencyLeakServiceForm({
-  className,
-}: EmergencyLeakServiceFormProps) {
+export default function EmergencyLeakServiceForm() {
   const [formData, setFormData] = useState<IntakeFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [serviceOrderLookupValue, setServiceOrderLookupValue] = useState("");
@@ -52,7 +47,7 @@ export default function EmergencyLeakServiceForm({
     useState<ServiceOrderLookupResponse | null>(null);
   const [lookupMessage, setLookupMessage] = useState("");
   const [isLookingUp, setIsLookingUp] = useState(false);
-  const [isLookupOpen, setIsLookupOpen] = useState(true);
+  // const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [submitRequestId, setSubmitRequestId] = useState("");
@@ -103,7 +98,7 @@ export default function EmergencyLeakServiceForm({
         setEmailLookupValue(parsedDraft.emailLookupValue);
       }
 
-      setLookupMessage("Restored saved draft.");
+      // Draft restored silently
     } catch {
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
     }
@@ -339,431 +334,356 @@ export default function EmergencyLeakServiceForm({
 
   if (activeReferenceId && !isSuccessModalOpen) {
     return (
-      <div className={className ?? "space-y-8 px-6 py-8 md:px-10"}>
-        <OrderStatusPanel
-          referenceId={activeReferenceId}
-          onDismiss={handleStatusDismiss}
+      <div>
+        <IntakeHeader
+          lookupValue={serviceOrderLookupValue || emailLookupValue}
+          onLookupValueChange={(v) => {
+            setServiceOrderLookupValue(v);
+            setEmailLookupValue(v);
+          }}
+          onLookupByEmail={handleLookupByEmail}
+          onLookupByServiceOrder={handleLookupByServiceOrder}
+          isLookingUp={isLookingUp}
+          lookupMessage={lookupMessage}
         />
+        <div className="space-y-8 px-6 py-8 md:px-10">
+          <OrderStatusPanel
+            referenceId={activeReferenceId}
+            onDismiss={handleStatusDismiss}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <form
-      className={className ?? "space-y-8 px-6 py-8 md:px-10"}
-      onSubmit={onSubmit}
-      noValidate
-    >
-      <section className="overflow-hidden rounded-lg border border-slate-300">
-        <button
-          type="button"
-          onClick={() => setIsLookupOpen((prev) => !prev)}
-          className="flex w-full items-center justify-between bg-[#1e2a3a] p-4 text-left"
-        >
-          <div>
-            <h2 className="text-lg font-bold text-white">
-              Save Time — Prefill Your Info
-            </h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-300">
-              Look up a previous service order to auto-fill your details.
-            </p>
-          </div>
-          <svg
-            className={`h-5 w-5 shrink-0 text-white transition-transform ${
-              isLookupOpen ? "rotate-180" : ""
-            }`}
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
+    <form onSubmit={onSubmit} noValidate>
+      <IntakeHeader
+        onReset={handleResetClick}
+        lookupValue={serviceOrderLookupValue || emailLookupValue}
+        onLookupValueChange={(v) => {
+          setServiceOrderLookupValue(v);
+          setEmailLookupValue(v);
+        }}
+        onLookupByEmail={handleLookupByEmail}
+        onLookupByServiceOrder={handleLookupByServiceOrder}
+        isLookingUp={isLookingUp}
+        lookupMessage={lookupMessage}
+      />
+
+      <div className="space-y-8 px-6 py-8 md:px-10">
+        {/* Old collapsible lookup section — replaced by header inline lookup
+        <section className="overflow-hidden rounded-lg border border-slate-300">
+          <button
+            type="button"
+            onClick={() => setIsLookupOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between bg-[#1e2a3a] p-4 text-left"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
-
-        {isLookupOpen && (
-          <div className="grid grid-cols-1 gap-5 border-t border-slate-200 p-4 md:grid-cols-2">
-            <label
-              className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
-              htmlFor="lookupServiceOrderNumber"
-            >
-              Previous Service Order Number
-              <input
-                id="lookupServiceOrderNumber"
-                name="lookupServiceOrderNumber"
-                value={serviceOrderLookupValue}
-                onChange={(event) =>
-                  setServiceOrderLookupValue(event.target.value)
-                }
-                placeholder="e.g. ELS-26-01-4837 or reference ID"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
-              />
-              <button
-                type="button"
-                onClick={handleLookupByServiceOrder}
-                disabled={isLookingUp || !serviceOrderLookupValue.trim()}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+            <div>
+              <h2 className="text-lg font-bold text-white">
+                Save Time — Prefill Your Info
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-300">
+                Look up a previous service order to auto-fill your details.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="text-xs font-medium text-slate-400">
+                {isLookupOpen ? "Click to close" : "Click to open"}
+              </span>
+              <svg
+                className={`h-5 w-5 text-white transition-transform ${
+                  isLookupOpen ? "rotate-180" : ""
+                }`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
               >
-                {isLookingUp && (
-                  <svg
-                    className="h-4 w-4 animate-spin text-emerald-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    />
-                  </svg>
-                )}
-                {isLookingUp ? "Searching…" : "Look Up by Service Order"}
-              </button>
-            </label>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </button>
 
-            <label
-              className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
-              htmlFor="lookupEmail"
-            >
-              Email on File
-              <input
-                id="lookupEmail"
-                name="lookupEmail"
-                value={emailLookupValue}
-                onChange={(event) => setEmailLookupValue(event.target.value)}
-                type="email"
-                placeholder="e.g. john@company.com"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
-              />
-              <button
-                type="button"
-                onClick={handleLookupByEmail}
-                disabled={isLookingUp || !emailLookupValue.trim()}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+          {isLookupOpen && (
+            <div className="grid grid-cols-1 gap-5 border-t border-slate-200 p-4 md:grid-cols-2">
+              <label
+                className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
+                htmlFor="lookupServiceOrderNumber"
               >
-                {isLookingUp && (
-                  <svg
-                    className="h-4 w-4 animate-spin text-emerald-600"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    />
-                  </svg>
-                )}
-                {isLookingUp ? "Searching…" : "Look Up by Email"}
-              </button>
-            </label>
-
-            <div className="md:col-span-2 flex justify-end">
-              <button
-                type="button"
-                onClick={handleResetClick}
-                className="inline-flex items-center justify-center gap-1.5 rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
+                Previous Service Order Number
+                <input
+                  id="lookupServiceOrderNumber"
+                  name="lookupServiceOrderNumber"
+                  value={serviceOrderLookupValue}
+                  onChange={(event) =>
+                    setServiceOrderLookupValue(event.target.value)
+                  }
+                  placeholder="e.g. ELS-26-01-4837 or reference ID"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+                />
+                <button
+                  type="button"
+                  onClick={handleLookupByServiceOrder}
+                  disabled={isLookingUp || !serviceOrderLookupValue.trim()}
+                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"
-                  />
-                </svg>
-                Reset All
-              </button>
+                  {isLookingUp && (
+                    <svg
+                      className="h-4 w-4 animate-spin text-emerald-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  )}
+                  {isLookingUp ? "Searching…" : "Look Up by Service Order"}
+                </button>
+              </label>
+
+              <label
+                className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
+                htmlFor="lookupEmail"
+              >
+                Email on File
+                <input
+                  id="lookupEmail"
+                  name="lookupEmail"
+                  value={emailLookupValue}
+                  onChange={(event) => setEmailLookupValue(event.target.value)}
+                  type="email"
+                  placeholder="e.g. john@company.com"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+                />
+                <button
+                  type="button"
+                  onClick={handleLookupByEmail}
+                  disabled={isLookingUp || !emailLookupValue.trim()}
+                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLookingUp && (
+                    <svg
+                      className="h-4 w-4 animate-spin text-emerald-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  )}
+                  {isLookingUp ? "Searching…" : "Look Up by Email"}
+                </button>
+              </label>
+
+              {lookupMessage ? (
+                <p className="md:col-span-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {lookupMessage}
+                </p>
+              ) : null}
             </div>
+          )}
+        </section>
+        End of old lookup section */}
 
-            {lookupMessage ? (
-              <p className="md:col-span-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                {lookupMessage}
+        <ContactInfoSection
+          formData={formData}
+          errors={errors}
+          onFieldChange={updateField}
+          prefillClients={lookupResults?.clients ?? []}
+          onPrefillClient={applyClientSelection}
+        />
+
+        <BillingInfoSection
+          formData={formData}
+          errors={errors}
+          onFieldChange={updateField}
+          prefillBillings={lookupResults?.billings ?? []}
+          onPrefillBilling={applyBillingSelection}
+        />
+
+        <LeakingPropertySection
+          property={activeProperty}
+          errors={errors}
+          onPropertyChange={updatePropertyField}
+          prefillLeaks={lookupResults?.leaks ?? []}
+          onPrefillLeak={applyLeakSelection}
+        />
+
+        <div className="-mt-4">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+          >
+            Add Property
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-slate-300 pt-6 md:flex-row md:justify-end">
+          <button
+            type="button"
+            onClick={clearForm}
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Clear Form
+          </button>
+          <button
+            type="button"
+            onClick={prefillMockData}
+            className="inline-flex items-center justify-center rounded-md border border-[#2f9750] px-6 py-3 text-sm font-semibold text-[#2f9750] transition hover:bg-[#2f9750]/10"
+          >
+            Prefill Mock Data
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center rounded-md bg-[#2f9750] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#268a45] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Request"}
+          </button>
+        </div>
+
+        {isConfirmModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+              <p className="text-base font-bold text-slate-900">
+                Confirm Submission
               </p>
-            ) : null}
-
-            {lookupResults ? (
-              <div className="md:col-span-2 grid grid-cols-1 gap-4">
-                {lookupResults.clients.map((client, index) => (
-                  <div
-                    key={`client-${index}`}
-                    className="rounded-md border border-slate-200 p-3"
-                  >
-                    <p className="text-sm font-semibold text-slate-900">
-                      Contact: {client.AccountName}
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      {client.AccountContactName} · {client.Email}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => applyClientSelection(client)}
-                      className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                    >
-                      Prefill Contact
-                    </button>
-                  </div>
-                ))}
-
-                {(() => {
-                  const billings = lookupResults.billings;
-                  if (billings.length === 0) return null;
-                  const merged: BillingInfoPayload =
-                    billings.length === 1
-                      ? billings[0]
-                      : billings.reduce<BillingInfoPayload>(
-                          (acc, b) => ({
-                            DynamoId: acc.DynamoId ?? b.DynamoId,
-                            EntityBillToName:
-                              acc.EntityBillToName || b.EntityBillToName,
-                            BillToAddress: acc.BillToAddress || b.BillToAddress,
-                            BillToAddress2:
-                              acc.BillToAddress2 || b.BillToAddress2,
-                            BillToCity: acc.BillToCity || b.BillToCity,
-                            BillToZip: acc.BillToZip || b.BillToZip,
-                            BillToEmail: acc.BillToEmail || b.BillToEmail,
-                          }),
-                          {} as BillingInfoPayload,
-                        );
-                  return (
-                    <div className="rounded-md border border-slate-200 p-3">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Billing: {merged.EntityBillToName}
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        {merged.BillToAddress} {merged.BillToCity}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => applyBillingSelection(merged)}
-                        className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                      >
-                        Prefill Billing
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {lookupResults.leaks.map((leak, index) => (
-                  <div
-                    key={`leak-${index}`}
-                    className="rounded-md border border-slate-200 p-3"
-                  >
-                    <p className="text-sm font-semibold text-slate-900">
-                      Property: {leak.SiteName}
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      {leak.SiteAddress}, {leak.SiteCity}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => applyLeakSelection(leak)}
-                      className="mt-2 inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                    >
-                      Prefill Property
-                    </button>
-                  </div>
-                ))}
+              <p className="mt-3 text-sm text-slate-700">
+                Are you sure information is correct and you want to submit this
+                emergency leak inspection form?
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSubmit}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center rounded-md bg-[#2f9750] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#268a45] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? "Submitting..." : "Yes, Submit"}
+                </button>
               </div>
-            ) : null}
-          </div>
-        )}
-      </section>
-
-      <ContactInfoSection
-        formData={formData}
-        errors={errors}
-        onFieldChange={updateField}
-        prefillClients={lookupResults?.clients ?? []}
-        onPrefillClient={applyClientSelection}
-      />
-
-      <BillingInfoSection
-        formData={formData}
-        errors={errors}
-        onFieldChange={updateField}
-        prefillBillings={lookupResults?.billings ?? []}
-        onPrefillBilling={applyBillingSelection}
-      />
-
-      <LeakingPropertySection
-        property={activeProperty}
-        errors={errors}
-        onPropertyChange={updatePropertyField}
-        prefillLeaks={lookupResults?.leaks ?? []}
-        onPrefillLeak={applyLeakSelection}
-      />
-
-      <div className="-mt-4">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-        >
-          Add Property
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-3 border-t border-slate-300 pt-6 md:flex-row md:justify-end">
-        <button
-          type="button"
-          onClick={clearForm}
-          className="inline-flex items-center justify-center rounded-md border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-        >
-          Clear Form
-        </button>
-        <button
-          type="button"
-          onClick={prefillMockData}
-          className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-6 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-        >
-          Prefill Mock Data
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSubmitting ? "Submitting..." : "Submit Request"}
-        </button>
-      </div>
-
-      {isConfirmModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <p className="text-base font-bold text-slate-900">
-              Confirm Submission
-            </p>
-            <p className="mt-3 text-sm text-slate-700">
-              Are you sure information is correct and you want to submit this
-              emergency leak inspection form?
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsConfirmModalOpen(false)}
-                disabled={isSubmitting}
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmSubmit}
-                disabled={isSubmitting}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting ? "Submitting..." : "Yes, Submit"}
-              </button>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {isSuccessModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
-          <div className="w-full max-w-md rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xl">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/New-Logo-Final-White-1.svg"
-                alt="Highland Commercial Roofing"
-                width={140}
-                height={28}
-                className="rounded bg-emerald-700 px-2 py-1"
-              />
-              <p className="text-base font-bold text-emerald-800">
-                Request Submitted
+        {isSuccessModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-xl">
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/New-Logo-Final-White-1.svg"
+                  alt="Highland Commercial Roofing"
+                  width={140}
+                  height={28}
+                  className="rounded bg-emerald-700 px-2 py-1"
+                />
+                <p className="text-base font-bold text-emerald-800">
+                  Request Submitted
+                </p>
+              </div>
+              <p className="mt-4 text-sm text-emerald-900">
+                {submitSuccessMessage ||
+                  "Your emergency service request was submitted successfully."}
               </p>
-            </div>
-            <p className="mt-4 text-sm text-emerald-900">
-              {submitSuccessMessage ||
-                "Your emergency service request was submitted successfully."}
-            </p>
-            <p className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm text-emerald-900">
-              Reference ID:{" "}
-              <span className="font-bold">{submitRequestId || "Pending"}</span>
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsSuccessModalOpen(false)}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
-                View Order Status
-              </button>
-              <button
-                type="button"
-                onClick={handleStatusDismiss}
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Submit Another
-              </button>
+              <p className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 text-sm text-emerald-900">
+                Reference ID:{" "}
+                <span className="font-bold">
+                  {submitRequestId || "Pending"}
+                </span>
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSuccessModalOpen(false)}
+                  className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  View Order Status
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStatusDismiss}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Submit Another
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {isResetModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <p className="text-base font-bold text-slate-900">Reset Form?</p>
-            <p className="mt-3 text-sm text-slate-700">
-              You have entered data on this form. Are you sure you want to reset
-              all fields and clear all filters? This action cannot be undone.
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsResetModalOpen(false)}
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={clearForm}
-                className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-              >
-                Yes, Reset Everything
-              </button>
+        {isResetModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+              <p className="text-base font-bold text-slate-900">Reset Form?</p>
+              <p className="mt-3 text-sm text-slate-700">
+                You have entered data on this form. Are you sure you want to
+                reset all fields and clear all filters? This action cannot be
+                undone.
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={clearForm}
+                  className="inline-flex items-center justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Yes, Reset Everything
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {submitState === "error" ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          Submission failed. Connect your backend endpoint and try again.
-        </p>
-      ) : null}
+        {submitState === "error" ? (
+          <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            Submission failed. Connect your backend endpoint and try again.
+          </p>
+        ) : null}
+      </div>
     </form>
   );
 }
