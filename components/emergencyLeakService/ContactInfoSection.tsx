@@ -58,7 +58,7 @@ export default function ContactInfoSection({
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-300">
-      <div className="bg-[#2f9750] px-4 py-3">
+      <div className="bg-slate-700 px-4 py-3">
         <h2 className="text-lg font-bold text-white">Account Info</h2>
       </div>
       <div className="bg-white p-4">
