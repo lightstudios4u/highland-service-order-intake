@@ -31,7 +31,7 @@ export const EMPTY_PROPERTY: LeakingProperty = {
 };
 
 export const INITIAL_FORM_DATA: IntakeFormData = {
-  leakingProperties: [{ ...EMPTY_PROPERTY }],
+  leakingProperties: [],
   clientDynamoAccountId: null,
   clientDynamoCountId: null,
   clientAccountName: "",
@@ -96,43 +96,8 @@ export const MOCK_LOOKUP_VALUES = {
   email: "jordan.smith@acmeretail.com",
 };
 
-export function isFormDirty(
-  formData: IntakeFormData,
-  serviceOrderLookupValue: string,
-  emailLookupValue: string,
-): boolean {
-  if (serviceOrderLookupValue.trim() || emailLookupValue.trim()) {
-    return true;
-  }
-
-  const initial = INITIAL_FORM_DATA;
-  const property = formData.leakingProperties[0];
-  const initialProperty = initial.leakingProperties[0];
-
-  const topLevelKeys: (keyof IntakeFormData)[] = [
-    "clientAccountName",
-    "clientAccountContactName",
-    "clientEmail",
-    "clientPhone",
-    "billingEntityBillToName",
-    "billingBillToAddress",
-    "billingBillToAddress2",
-    "billingBillToCity",
-    "billingBillToZip",
-    "billingBillToEmail",
-  ];
-
-  for (const key of topLevelKeys) {
-    if (formData[key] !== initial[key]) return true;
-  }
-
-  if (
-    formData.clientDynamoAccountId !== initial.clientDynamoAccountId ||
-    formData.clientDynamoCountId !== initial.clientDynamoCountId ||
-    formData.billingDynamoId !== initial.billingDynamoId
-  ) {
-    return true;
-  }
+function isPropertyDirty(property: LeakingProperty): boolean {
+  const initialProperty = EMPTY_PROPERTY;
 
   const propertyStringKeys: (keyof LeakingProperty)[] = [
     "siteName",
@@ -173,6 +138,48 @@ export function isFormDirty(
   return false;
 }
 
+export function isFormDirty(
+  formData: IntakeFormData,
+  serviceOrderLookupValue: string,
+  emailLookupValue: string,
+): boolean {
+  if (serviceOrderLookupValue.trim() || emailLookupValue.trim()) {
+    return true;
+  }
+
+  const initial = INITIAL_FORM_DATA;
+
+  const topLevelKeys: (keyof IntakeFormData)[] = [
+    "clientAccountName",
+    "clientAccountContactName",
+    "clientEmail",
+    "clientPhone",
+    "billingEntityBillToName",
+    "billingBillToAddress",
+    "billingBillToAddress2",
+    "billingBillToCity",
+    "billingBillToZip",
+    "billingBillToEmail",
+  ];
+
+  for (const key of topLevelKeys) {
+    if (formData[key] !== initial[key]) return true;
+  }
+
+  if (
+    formData.clientDynamoAccountId !== initial.clientDynamoAccountId ||
+    formData.clientDynamoCountId !== initial.clientDynamoCountId ||
+    formData.billingDynamoId !== initial.billingDynamoId
+  ) {
+    return true;
+  }
+
+  // Dirty if any properties have been added
+  if (formData.leakingProperties.length > 0) return true;
+
+  return false;
+}
+
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
@@ -181,11 +188,29 @@ function isPhone(value: string) {
   return /^[0-9+()\-\s]{10,}$/.test(value.trim());
 }
 
+export function validateProperty(property: LeakingProperty): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (!property.siteName.trim()) {
+    errors.siteName = "Site Name is required.";
+  }
+  if (!property.siteAddress.trim()) {
+    errors.siteAddress = "Site Address is required.";
+  }
+  if (!property.siteCity.trim()) {
+    errors.siteCity = "Site City is required.";
+  }
+  if (!property.siteZip.trim()) {
+    errors.siteZip = "Site Zip is required.";
+  }
+
+  return errors;
+}
+
 export function validateEmergencyLeakServiceForm(
   data: IntakeFormData,
 ): ValidationErrors {
   const errors: ValidationErrors = {};
-  const property = data.leakingProperties[0];
 
   if (!data.clientAccountName.trim()) {
     errors.clientAccountName = "Account Name is required.";
@@ -199,20 +224,23 @@ export function validateEmergencyLeakServiceForm(
   if (!isPhone(data.clientPhone)) {
     errors.clientPhone = "Enter a valid phone number.";
   }
-  if (!property.siteName.trim()) {
-    errors.siteName = "Site Name is required.";
-  }
-  if (!property.siteAddress.trim()) {
-    errors.siteAddress = "Site Address is required.";
-  }
-  if (!property.siteCity.trim()) {
-    errors.siteCity = "Site City is required.";
-  }
-  if (!property.siteZip.trim()) {
-    errors.siteZip = "Site Zip is required.";
-  }
   if (data.billingBillToEmail.trim() && !isEmail(data.billingBillToEmail)) {
     errors.billingBillToEmail = "Enter a valid billing email address.";
+  }
+
+  if (data.leakingProperties.length === 0) {
+    errors.siteName = "At least one property is required.";
+  }
+
+  // Also validate each property in the array
+  for (const property of data.leakingProperties) {
+    const propErrors = validateProperty(property);
+    // Surface the first property-level error found (keyed by field name)
+    for (const [key, value] of Object.entries(propErrors)) {
+      if (!errors[key as keyof ValidationErrors]) {
+        errors[key as keyof ValidationErrors] = value;
+      }
+    }
   }
 
   return errors;

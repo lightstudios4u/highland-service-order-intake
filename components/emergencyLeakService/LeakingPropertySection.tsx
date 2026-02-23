@@ -11,22 +11,37 @@ import {
 import PrefillDropdown, {
   PrefillOption,
 } from "@/components/emergencyLeakService/PrefillDropdown";
+import PropertyTable from "@/components/emergencyLeakService/PropertyTable";
 
 type LeakingPropertySectionProps = {
-  property: LeakingProperty;
+  properties: LeakingProperty[];
+  editingIndex: number | null;
+  editorProperty: LeakingProperty;
   errors: ValidationErrors;
-  onPropertyChange: <K extends keyof LeakingProperty>(
+  onEditorChange: <K extends keyof LeakingProperty>(
     field: K,
     value: LeakingProperty[K],
   ) => void;
+  onAddOrUpdate: () => void;
+  onEditSelect: (index: number) => void;
+  onCancelEdit: () => void;
+  onCopy: (index: number) => void;
+  onDelete: (index: number) => void;
   prefillLeaks: LeakDetailsPayload[];
   onPrefillLeak: (leak: LeakDetailsPayload) => void;
 };
 
 export default function LeakingPropertySection({
-  property,
+  properties,
+  editingIndex,
+  editorProperty,
   errors,
-  onPropertyChange,
+  onEditorChange,
+  onAddOrUpdate,
+  onEditSelect,
+  onCancelEdit,
+  onCopy,
+  onDelete,
   prefillLeaks,
   onPrefillLeak,
 }: LeakingPropertySectionProps) {
@@ -37,42 +52,42 @@ export default function LeakingPropertySection({
   const isPreviewing = previewData !== null;
 
   const displayed = {
-    siteName: previewData?.SiteName ?? property.siteName,
-    siteAddress: previewData?.SiteAddress ?? property.siteAddress,
-    siteAddress2: previewData?.SiteAddress2 ?? property.siteAddress2,
-    siteCity: previewData?.SiteCity ?? property.siteCity,
-    siteZip: previewData?.SiteZip ?? property.siteZip,
+    siteName: previewData?.SiteName ?? editorProperty.siteName,
+    siteAddress: previewData?.SiteAddress ?? editorProperty.siteAddress,
+    siteAddress2: previewData?.SiteAddress2 ?? editorProperty.siteAddress2,
+    siteCity: previewData?.SiteCity ?? editorProperty.siteCity,
+    siteZip: previewData?.SiteZip ?? editorProperty.siteZip,
     tenantBusinessName:
-      previewData?.TenantBusinessName ?? property.tenantBusinessName,
+      previewData?.TenantBusinessName ?? editorProperty.tenantBusinessName,
     tenantContactName:
-      previewData?.TenantContactName ?? property.tenantContactName,
+      previewData?.TenantContactName ?? editorProperty.tenantContactName,
     tenantContactPhone:
-      previewData?.TenantContactPhone ?? property.tenantContactPhone,
+      previewData?.TenantContactPhone ?? editorProperty.tenantContactPhone,
     tenantContactCell:
-      previewData?.TenantContactCell ?? property.tenantContactCell,
+      previewData?.TenantContactCell ?? editorProperty.tenantContactCell,
     tenantContactEmail:
-      previewData?.TenantContactEmail ?? property.tenantContactEmail,
+      previewData?.TenantContactEmail ?? editorProperty.tenantContactEmail,
     hoursOfOperation:
-      previewData?.HoursOfOperation ?? property.hoursOfOperation,
-    leakNearOther: previewData?.LeakNearOther ?? property.leakNearOther,
-    accessCode: previewData?.AccessCode ?? property.accessCode,
-    comments: previewData?.Comments ?? property.comments,
-    leakLocation: previewData?.LeakLocation ?? property.leakLocation,
-    leakNear: previewData?.LeakNear ?? property.leakNear,
-    roofPitch: previewData?.RoofPitch ?? property.roofPitch,
-    hasAccessCode: previewData?.HasAccessCode ?? property.hasAccessCode,
+      previewData?.HoursOfOperation ?? editorProperty.hoursOfOperation,
+    leakNearOther: previewData?.LeakNearOther ?? editorProperty.leakNearOther,
+    accessCode: previewData?.AccessCode ?? editorProperty.accessCode,
+    comments: previewData?.Comments ?? editorProperty.comments,
+    leakLocation: previewData?.LeakLocation ?? editorProperty.leakLocation,
+    leakNear: previewData?.LeakNear ?? editorProperty.leakNear,
+    roofPitch: previewData?.RoofPitch ?? editorProperty.roofPitch,
+    hasAccessCode: previewData?.HasAccessCode ?? editorProperty.hasAccessCode,
     isSaturdayAccessPermitted:
       previewData?.IsSaturdayAccessPermitted ??
-      property.isSaturdayAccessPermitted,
-    isKeyRequired: previewData?.IsKeyRequired ?? property.isKeyRequired,
+      editorProperty.isSaturdayAccessPermitted,
+    isKeyRequired: previewData?.IsKeyRequired ?? editorProperty.isKeyRequired,
     isLadderRequired:
-      previewData?.IsLadderRequired ?? property.isLadderRequired,
+      previewData?.IsLadderRequired ?? editorProperty.isLadderRequired,
   };
 
   const handleInput =
     <K extends keyof LeakingProperty>(field: K) =>
     (event: ChangeEvent<HTMLInputElement>) =>
-      onPropertyChange(field, event.target.value as LeakingProperty[K]);
+      onEditorChange(field, event.target.value as LeakingProperty[K]);
 
   const options: PrefillOption<LeakDetailsPayload>[] = useMemo(
     () =>
@@ -88,12 +103,53 @@ export default function LeakingPropertySection({
     ? "border-amber-300 bg-amber-50"
     : "border-slate-300 bg-white";
 
+  const isEditing = editingIndex !== null;
+
   return (
     <section className="overflow-hidden rounded-lg border border-slate-300">
       <div className="bg-slate-700 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">Property Info</h2>
+        <h2 className="text-lg font-bold text-white">
+          Property Info
+          {properties.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-slate-300">
+              ({properties.length}{" "}
+              {properties.length === 1 ? "property" : "properties"})
+            </span>
+          )}
+        </h2>
       </div>
       <div className="bg-white p-4">
+        {/* ── Summary table ── */}
+        {properties.length > 0 && (
+          <div className="mb-5">
+            <PropertyTable
+              properties={properties}
+              editingIndex={editingIndex}
+              onEdit={onEditSelect}
+              onCopy={onCopy}
+              onDelete={onDelete}
+            />
+          </div>
+        )}
+
+        {/* ── Editor heading ── */}
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-700">
+            {isEditing
+              ? `Editing Property #${editingIndex + 1}`
+              : "New Property"}
+          </h3>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="text-sm font-medium text-slate-500 underline transition hover:text-slate-700"
+            >
+              Cancel Edit
+            </button>
+          )}
+        </div>
+
         {options.length > 0 && (
           <div className="mb-5">
             <PrefillDropdown
@@ -209,7 +265,7 @@ export default function LeakingPropertySection({
               name="leakLocation"
               value={displayed.leakLocation}
               onChange={(event) =>
-                onPropertyChange(
+                onEditorChange(
                   "leakLocation",
                   event.target.value as LeakingProperty["leakLocation"],
                 )
@@ -232,7 +288,7 @@ export default function LeakingPropertySection({
               name="leakNear"
               value={displayed.leakNear}
               onChange={(event) =>
-                onPropertyChange(
+                onEditorChange(
                   "leakNear",
                   event.target.value as LeakingProperty["leakNear"],
                 )
@@ -265,7 +321,7 @@ export default function LeakingPropertySection({
               name="roofPitch"
               value={displayed.roofPitch}
               onChange={(event) =>
-                onPropertyChange(
+                onEditorChange(
                   "roofPitch",
                   event.target.value as LeakingProperty["roofPitch"],
                 )
@@ -292,7 +348,7 @@ export default function LeakingPropertySection({
                   type="checkbox"
                   checked={displayed.hasAccessCode}
                   onChange={(event) =>
-                    onPropertyChange("hasAccessCode", event.target.checked)
+                    onEditorChange("hasAccessCode", event.target.checked)
                   }
                   className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
@@ -304,7 +360,7 @@ export default function LeakingPropertySection({
                   type="checkbox"
                   checked={displayed.isSaturdayAccessPermitted}
                   onChange={(event) =>
-                    onPropertyChange(
+                    onEditorChange(
                       "isSaturdayAccessPermitted",
                       event.target.checked,
                     )
@@ -319,7 +375,7 @@ export default function LeakingPropertySection({
                   type="checkbox"
                   checked={displayed.isKeyRequired}
                   onChange={(event) =>
-                    onPropertyChange("isKeyRequired", event.target.checked)
+                    onEditorChange("isKeyRequired", event.target.checked)
                   }
                   className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
@@ -331,7 +387,7 @@ export default function LeakingPropertySection({
                   type="checkbox"
                   checked={displayed.isLadderRequired}
                   onChange={(event) =>
-                    onPropertyChange("isLadderRequired", event.target.checked)
+                    onEditorChange("isLadderRequired", event.target.checked)
                   }
                   className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
@@ -346,14 +402,40 @@ export default function LeakingPropertySection({
             id="comments"
             label="Comments"
             value={displayed.comments}
-            onChange={(event) =>
-              onPropertyChange("comments", event.target.value)
-            }
+            onChange={(event) => onEditorChange("comments", event.target.value)}
             error={errors.comments}
             className="md:col-span-2 flex flex-col gap-2 text-sm font-semibold text-slate-800"
             previewing={isPreviewing}
           />
         </div>
+
+        {/* ── Add / Update buttons ── */}
+        <div className="mt-5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onAddOrUpdate}
+            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          >
+            {isEditing ? "Update Property" : "Add Property"}
+          </button>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+
+        {/* Error when no properties added yet at submit time */}
+        {properties.length === 0 &&
+          errors.siteName === "At least one property is required." && (
+            <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {errors.siteName}
+            </p>
+          )}
       </div>
     </section>
   );

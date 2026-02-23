@@ -1,15 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { LuFileWarning } from "react-icons/lu";
 
 import {
+  EMPTY_PROPERTY,
   INITIAL_FORM_DATA,
   MOCK_FORM_DATA,
   MOCK_LOOKUP_VALUES,
   isFormDirty,
   validateEmergencyLeakServiceForm,
+  validateProperty,
 } from "@/helpers/emergencyLeakServiceForm";
 import {
   lookupServiceIntake,
@@ -61,10 +63,14 @@ export default function EmergencyLeakServiceForm() {
   const [activeReferenceId, setActiveReferenceId] = useState("");
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
-  const activeProperty = useMemo(
-    () => formData.leakingProperties[0],
-    [formData.leakingProperties],
-  );
+  // ── Property editor state ──
+  const [editorProperty, setEditorProperty] = useState<LeakingProperty>({
+    ...EMPTY_PROPERTY,
+  });
+  const [editingPropertyIndex, setEditingPropertyIndex] = useState<
+    number | null
+  >(null);
+  const [editorErrors, setEditorErrors] = useState<ValidationErrors>({});
 
   useEffect(() => {
     try {
@@ -78,17 +84,16 @@ export default function EmergencyLeakServiceForm() {
       ) as Partial<EmergencyLeakServiceDraft>;
 
       if (parsedDraft.formData) {
-        const draftProperty = parsedDraft.formData.leakingProperties?.[0];
+        const draftProperties =
+          parsedDraft.formData.leakingProperties?.map((p) => ({
+            ...EMPTY_PROPERTY,
+            ...(p ?? {}),
+          })) ?? [];
 
         setFormData({
           ...INITIAL_FORM_DATA,
           ...parsedDraft.formData,
-          leakingProperties: [
-            {
-              ...INITIAL_FORM_DATA.leakingProperties[0],
-              ...(draftProperty ?? {}),
-            },
-          ],
+          leakingProperties: draftProperties.length > 0 ? draftProperties : [],
         });
       }
 
@@ -130,14 +135,18 @@ export default function EmergencyLeakServiceForm() {
     setFormData((current) => ({ ...current, [field]: value }));
   }
 
-  function updatePropertyField<K extends keyof LeakingProperty>(
+  function updateEditorField<K extends keyof LeakingProperty>(
     field: K,
     value: LeakingProperty[K],
   ) {
-    setFormData((current) => ({
-      ...current,
-      leakingProperties: [{ ...current.leakingProperties[0], [field]: value }],
-    }));
+    setEditorProperty((current) => ({ ...current, [field]: value }));
+    // Clear editor-level error for this field when user types
+    setEditorErrors((prev) => {
+      if (!prev[field as keyof ValidationErrors]) return prev;
+      const next = { ...prev };
+      delete next[field as keyof ValidationErrors];
+      return next;
+    });
   }
 
   function applyPrefillData(data: Partial<IntakeFormData>) {
@@ -147,13 +156,11 @@ export default function EmergencyLeakServiceForm() {
         ...data,
       };
 
-      if (data.leakingProperties && data.leakingProperties.length > 0) {
-        next.leakingProperties = [
-          {
-            ...current.leakingProperties[0],
-            ...data.leakingProperties[0],
-          },
-        ];
+      // Keep existing properties array — prefill only touches top-level & billing/client
+      if (data.leakingProperties) {
+        next.leakingProperties = data.leakingProperties;
+      } else {
+        next.leakingProperties = current.leakingProperties;
       }
 
       return next;
@@ -184,35 +191,99 @@ export default function EmergencyLeakServiceForm() {
   }
 
   function applyLeakSelection(leak: LeakDetailsPayload) {
-    applyPrefillData({
-      leakingProperties: [
-        {
-          dynamoId: leak.DynamoId ?? null,
-          jobNo: leak.JobNo ?? "",
-          siteName: leak.SiteName,
-          siteAddress: leak.SiteAddress,
-          siteAddress2: leak.SiteAddress2,
-          siteCity: leak.SiteCity,
-          siteZip: leak.SiteZip,
-          tenantBusinessName: leak.TenantBusinessName,
-          tenantContactName: leak.TenantContactName,
-          tenantContactPhone: leak.TenantContactPhone,
-          tenantContactCell: leak.TenantContactCell,
-          tenantContactEmail: leak.TenantContactEmail,
-          hoursOfOperation: leak.HoursOfOperation,
-          leakLocation: leak.LeakLocation,
-          leakNear: leak.LeakNear,
-          leakNearOther: leak.LeakNearOther,
-          hasAccessCode: leak.HasAccessCode,
-          accessCode: leak.AccessCode,
-          isSaturdayAccessPermitted: leak.IsSaturdayAccessPermitted,
-          isKeyRequired: leak.IsKeyRequired,
-          isLadderRequired: leak.IsLadderRequired,
-          roofPitch: leak.RoofPitch,
-          comments: leak.Comments,
-        },
-      ],
+    // Populate the editor form with the selected prefill data for review
+    setEditorProperty({
+      dynamoId: leak.DynamoId ?? null,
+      jobNo: leak.JobNo ?? "",
+      siteName: leak.SiteName,
+      siteAddress: leak.SiteAddress,
+      siteAddress2: leak.SiteAddress2,
+      siteCity: leak.SiteCity,
+      siteZip: leak.SiteZip,
+      tenantBusinessName: leak.TenantBusinessName,
+      tenantContactName: leak.TenantContactName,
+      tenantContactPhone: leak.TenantContactPhone,
+      tenantContactCell: leak.TenantContactCell,
+      tenantContactEmail: leak.TenantContactEmail,
+      hoursOfOperation: leak.HoursOfOperation,
+      leakLocation: leak.LeakLocation,
+      leakNear: leak.LeakNear,
+      leakNearOther: leak.LeakNearOther,
+      hasAccessCode: leak.HasAccessCode,
+      accessCode: leak.AccessCode,
+      isSaturdayAccessPermitted: leak.IsSaturdayAccessPermitted,
+      isKeyRequired: leak.IsKeyRequired,
+      isLadderRequired: leak.IsLadderRequired,
+      roofPitch: leak.RoofPitch,
+      comments: leak.Comments,
     });
+    setEditorErrors({});
+    // Stay in whatever mode (add new or editing existing)
+  }
+
+  // ── Property array operations ──
+
+  function handleAddOrUpdateProperty() {
+    const propErrors = validateProperty(editorProperty);
+    if (Object.keys(propErrors).length > 0) {
+      setEditorErrors(propErrors);
+      return;
+    }
+    setEditorErrors({});
+
+    setFormData((current) => {
+      const updated = [...current.leakingProperties];
+      if (editingPropertyIndex !== null) {
+        updated[editingPropertyIndex] = { ...editorProperty };
+      } else {
+        updated.push({ ...editorProperty });
+      }
+      return { ...current, leakingProperties: updated };
+    });
+
+    // Reset editor to blank "add new" mode
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
+  }
+
+  function handleEditProperty(index: number) {
+    setEditorProperty({ ...formData.leakingProperties[index] });
+    setEditingPropertyIndex(index);
+    setEditorErrors({});
+  }
+
+  function handleCancelEdit() {
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
+    setEditorErrors({});
+  }
+
+  function handleCopyProperty(index: number) {
+    setFormData((current) => {
+      const copy = {
+        ...current.leakingProperties[index],
+        dynamoId: null,
+        jobNo: "",
+      };
+      return {
+        ...current,
+        leakingProperties: [...current.leakingProperties, copy],
+      };
+    });
+  }
+
+  function handleDeleteProperty(index: number) {
+    setFormData((current) => {
+      const updated = current.leakingProperties.filter((_, i) => i !== index);
+      return { ...current, leakingProperties: updated };
+    });
+    // If we were editing the deleted row, reset editor
+    if (editingPropertyIndex === index) {
+      handleCancelEdit();
+    } else if (editingPropertyIndex !== null && editingPropertyIndex > index) {
+      // Adjust index if a row before it was removed
+      setEditingPropertyIndex(editingPropertyIndex - 1);
+    }
   }
 
   async function performLookup(payload: ServiceIntakeRequestPayload) {
@@ -242,20 +313,22 @@ export default function EmergencyLeakServiceForm() {
   }
 
   async function handleLookupByServiceOrder() {
+    const firstProp = formData.leakingProperties[0];
     await performLookup({
       JobNo: serviceOrderLookupValue.trim(),
       EmailAddress: "",
-      City: activeProperty.siteCity.trim(),
-      Zip: activeProperty.siteZip.trim(),
+      City: firstProp?.siteCity.trim() ?? "",
+      Zip: firstProp?.siteZip.trim() ?? "",
     });
   }
 
   async function handleLookupByEmail() {
+    const firstProp = formData.leakingProperties[0];
     await performLookup({
       JobNo: "",
       EmailAddress: emailLookupValue.trim(),
-      City: activeProperty.siteCity.trim(),
-      Zip: activeProperty.siteZip.trim(),
+      City: firstProp?.siteCity.trim() ?? "",
+      Zip: firstProp?.siteZip.trim() ?? "",
     });
   }
 
@@ -273,6 +346,9 @@ export default function EmergencyLeakServiceForm() {
       setIsConfirmModalOpen(false);
       setIsSuccessModalOpen(true);
       setFormData(INITIAL_FORM_DATA);
+      setEditorProperty({ ...EMPTY_PROPERTY });
+      setEditingPropertyIndex(null);
+      setEditorErrors({});
       setErrors({});
       setLookupResults(null);
       setLookupMessage("");
@@ -303,6 +379,9 @@ export default function EmergencyLeakServiceForm() {
     setServiceOrderLookupValue(MOCK_LOOKUP_VALUES.serviceOrderNumber);
     setEmailLookupValue(MOCK_LOOKUP_VALUES.email);
     setErrors({});
+    setEditorErrors({});
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
     setLookupResults(null);
     setLookupMessage("Mock data loaded.");
     setSubmitState("idle");
@@ -315,6 +394,9 @@ export default function EmergencyLeakServiceForm() {
     setServiceOrderLookupValue("");
     setEmailLookupValue("");
     setErrors({});
+    setEditorErrors({});
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
     setLookupResults(null);
     setLookupMessage("Form cleared.");
     setSubmitState("idle");
@@ -544,21 +626,27 @@ export default function EmergencyLeakServiceForm() {
         />
 
         <LeakingPropertySection
-          property={activeProperty}
-          errors={errors}
-          onPropertyChange={updatePropertyField}
+          properties={formData.leakingProperties}
+          editingIndex={editingPropertyIndex}
+          editorProperty={editorProperty}
+          errors={editorErrors}
+          onEditorChange={updateEditorField}
+          onAddOrUpdate={handleAddOrUpdateProperty}
+          onEditSelect={handleEditProperty}
+          onCancelEdit={handleCancelEdit}
+          onCopy={handleCopyProperty}
+          onDelete={handleDeleteProperty}
           prefillLeaks={lookupResults?.leaks ?? []}
           onPrefillLeak={applyLeakSelection}
         />
 
-        {/* <div className="-mt-4">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-          >
-            Add Property
-          </button>
-        </div> */}
+        {/* Show error when submit is attempted with no properties */}
+        {errors.siteName === "At least one property is required." &&
+          formData.leakingProperties.length === 0 && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {errors.siteName}
+            </p>
+          )}
 
         <div className="flex flex-col gap-3  md:flex-row md:justify-end">
           {/* <button
