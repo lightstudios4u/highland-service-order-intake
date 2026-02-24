@@ -12,6 +12,7 @@ import {
   isFormDirty,
   validateEmergencyLeakServiceForm,
   validateProperty,
+  isPropertyDirty,
 } from "@/helpers/emergencyLeakServiceForm";
 import {
   lookupServiceIntake,
@@ -33,6 +34,27 @@ import ContactInfoSection from "@/components/emergencyLeakService/ContactInfoSec
 import BillingInfoSection from "@/components/emergencyLeakService/BillingInfoSection";
 import IntakeHeader from "@/components/emergencyLeakService/IntakeHeader";
 import OrderStatusPanel from "@/components/emergencyLeakService/OrderStatusPanel";
+import SignatureSection from "@/components/emergencyLeakService/SignatureSection";
+
+// Reverse maps: API returns 0-based numeric enum values → form string names
+const LEAK_LOCATION_REVERSE: Record<number, LeakingProperty["leakLocation"]> = {
+  0: "Front",
+  1: "Middle",
+  2: "Back",
+};
+
+const LEAK_NEAR_REVERSE: Record<number, LeakingProperty["leakNear"]> = {
+  0: "HVACDuct",
+  1: "Skylight",
+  2: "Wall",
+  3: "Drain",
+  4: "Other",
+};
+
+const ROOF_PITCH_REVERSE: Record<number, LeakingProperty["roofPitch"]> = {
+  0: "FlatRoof",
+  1: "SteepShingleTile",
+};
 
 const DRAFT_STORAGE_KEY = "emergency-leak-service-intake-draft-v1";
 
@@ -71,6 +93,17 @@ export default function EmergencyLeakServiceForm() {
     number | null
   >(null);
   const [editorErrors, setEditorErrors] = useState<ValidationErrors>({});
+  const [isUpdatePropertyModalOpen, setIsUpdatePropertyModalOpen] =
+    useState(false);
+  const [isDeletePropertyModalOpen, setIsDeletePropertyModalOpen] =
+    useState(false);
+  const [deletePropertyIndex, setDeletePropertyIndex] = useState<number | null>(
+    null,
+  );
+  const [signatureDataUrl, setSignatureDataUrl] = useState("");
+  const [signatureName, setSignatureName] = useState("");
+  const [billingTermsAcknowledged, setBillingTermsAcknowledged] =
+    useState(false);
 
   useEffect(() => {
     try {
@@ -133,6 +166,9 @@ export default function EmergencyLeakServiceForm() {
     value: IntakeFormData[K],
   ) {
     setFormData((current) => ({ ...current, [field]: value }));
+    if (field === "clientAccountContactName") {
+      setSignatureName(value as string);
+    }
   }
 
   function updateEditorField<K extends keyof LeakingProperty>(
@@ -176,6 +212,9 @@ export default function EmergencyLeakServiceForm() {
       clientEmail: client.Email,
       clientPhone: client.Phone,
     });
+    if (!signatureName.trim()) {
+      setSignatureName(client.AccountContactName || "");
+    }
   }
 
   function applyBillingSelection(billing: BillingInfoPayload) {
@@ -192,30 +231,40 @@ export default function EmergencyLeakServiceForm() {
 
   function applyLeakSelection(leak: LeakDetailsPayload) {
     // Populate the editor form with the selected prefill data for review
+    // Coerce nulls to empty strings so controlled inputs stay controlled
     setEditorProperty({
       dynamoId: leak.DynamoId ?? null,
       jobNo: leak.JobNo ?? "",
-      siteName: leak.SiteName,
-      siteAddress: leak.SiteAddress,
-      siteAddress2: leak.SiteAddress2,
-      siteCity: leak.SiteCity,
-      siteZip: leak.SiteZip,
-      tenantBusinessName: leak.TenantBusinessName,
-      tenantContactName: leak.TenantContactName,
-      tenantContactPhone: leak.TenantContactPhone,
-      tenantContactCell: leak.TenantContactCell,
-      tenantContactEmail: leak.TenantContactEmail,
-      hoursOfOperation: leak.HoursOfOperation,
-      leakLocation: leak.LeakLocation,
-      leakNear: leak.LeakNear,
-      leakNearOther: leak.LeakNearOther,
-      hasAccessCode: leak.HasAccessCode,
-      accessCode: leak.AccessCode,
-      isSaturdayAccessPermitted: leak.IsSaturdayAccessPermitted,
-      isKeyRequired: leak.IsKeyRequired,
-      isLadderRequired: leak.IsLadderRequired,
-      roofPitch: leak.RoofPitch,
-      comments: leak.Comments,
+      siteName: leak.SiteName ?? "",
+      siteAddress: leak.SiteAddress ?? "",
+      siteAddress2: leak.SiteAddress2 ?? "",
+      siteCity: leak.SiteCity ?? "",
+      siteZip: leak.SiteZip ?? "",
+      tenantBusinessName: leak.TenantBusinessName ?? "",
+      tenantContactName: leak.TenantContactName ?? "",
+      tenantContactPhone: leak.TenantContactPhone ?? "",
+      tenantContactCell: leak.TenantContactCell ?? "",
+      tenantContactEmail: leak.TenantContactEmail ?? "",
+      hoursOfOperation: leak.HoursOfOperation ?? "",
+      leakLocation:
+        LEAK_LOCATION_REVERSE[leak.LeakLocation as unknown as number] ??
+        leak.LeakLocation ??
+        "",
+      leakNear:
+        LEAK_NEAR_REVERSE[leak.LeakNear as unknown as number] ??
+        leak.LeakNear ??
+        "",
+      leakNearOther: leak.LeakNearOther ?? "",
+      hasAccessCode: leak.HasAccessCode ?? false,
+      accessCode: leak.AccessCode ?? "",
+      isSaturdayAccessPermitted: leak.IsSaturdayAccessPermitted ?? false,
+      isKeyRequired: leak.IsKeyRequired ?? false,
+      isLadderRequired: leak.IsLadderRequired ?? false,
+      roofPitch:
+        ROOF_PITCH_REVERSE[leak.RoofPitch as unknown as number] ??
+        leak.RoofPitch ??
+        "",
+      comments: leak.Comments ?? "",
     });
     setEditorErrors({});
     // Stay in whatever mode (add new or editing existing)
@@ -253,9 +302,49 @@ export default function EmergencyLeakServiceForm() {
   }
 
   function handleCancelEdit() {
+    // If nothing changed, silently close without prompting
+    if (editingPropertyIndex !== null) {
+      const original = formData.leakingProperties[editingPropertyIndex];
+      const hasChanges = (
+        Object.keys(original) as (keyof LeakingProperty)[]
+      ).some((key) => editorProperty[key] !== original[key]);
+      if (!hasChanges) {
+        setEditorProperty({ ...EMPTY_PROPERTY });
+        setEditingPropertyIndex(null);
+        setEditorErrors({});
+        return;
+      }
+    }
+    // Open inline modal to ask whether to save changes
+    setIsUpdatePropertyModalOpen(true);
+  }
+
+  function confirmUpdateProperty() {
+    // Attempt to save; if validation fails, stay in edit mode
+    const propErrors = validateProperty(editorProperty);
+    if (Object.keys(propErrors).length > 0) {
+      setEditorErrors(propErrors);
+      setIsUpdatePropertyModalOpen(false);
+      return;
+    }
+    setFormData((current) => {
+      const updated = [...current.leakingProperties];
+      if (editingPropertyIndex !== null) {
+        updated[editingPropertyIndex] = { ...editorProperty };
+      }
+      return { ...current, leakingProperties: updated };
+    });
     setEditorProperty({ ...EMPTY_PROPERTY });
     setEditingPropertyIndex(null);
     setEditorErrors({});
+    setIsUpdatePropertyModalOpen(false);
+  }
+
+  function discardUpdateProperty() {
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
+    setEditorErrors({});
+    setIsUpdatePropertyModalOpen(false);
   }
 
   function handleCopyProperty(index: number) {
@@ -273,17 +362,33 @@ export default function EmergencyLeakServiceForm() {
   }
 
   function handleDeleteProperty(index: number) {
+    setDeletePropertyIndex(index);
+    setIsDeletePropertyModalOpen(true);
+  }
+
+  function confirmDeleteProperty() {
+    if (deletePropertyIndex === null) return;
+    const index = deletePropertyIndex;
     setFormData((current) => {
       const updated = current.leakingProperties.filter((_, i) => i !== index);
       return { ...current, leakingProperties: updated };
     });
     // If we were editing the deleted row, reset editor
     if (editingPropertyIndex === index) {
-      handleCancelEdit();
+      setEditorProperty({ ...EMPTY_PROPERTY });
+      setEditingPropertyIndex(null);
+      setEditorErrors({});
     } else if (editingPropertyIndex !== null && editingPropertyIndex > index) {
       // Adjust index if a row before it was removed
       setEditingPropertyIndex(editingPropertyIndex - 1);
     }
+    setDeletePropertyIndex(null);
+    setIsDeletePropertyModalOpen(false);
+  }
+
+  function cancelDeleteProperty() {
+    setDeletePropertyIndex(null);
+    setIsDeletePropertyModalOpen(false);
   }
 
   async function performLookup(payload: ServiceIntakeRequestPayload) {
@@ -320,6 +425,8 @@ export default function EmergencyLeakServiceForm() {
       City: firstProp?.siteCity.trim() ?? "",
       Zip: firstProp?.siteZip.trim() ?? "",
     });
+    setServiceOrderLookupValue("");
+    setEmailLookupValue("");
   }
 
   async function handleLookupByEmail() {
@@ -330,13 +437,19 @@ export default function EmergencyLeakServiceForm() {
       City: firstProp?.siteCity.trim() ?? "",
       Zip: firstProp?.siteZip.trim() ?? "",
     });
+    setServiceOrderLookupValue("");
+    setEmailLookupValue("");
   }
 
   async function confirmSubmit() {
     setIsSubmitting(true);
 
     try {
-      const payload = buildServiceOrderRequestPayload(formData);
+      const payload = buildServiceOrderRequestPayload(
+        formData,
+        signatureDataUrl,
+        signatureName,
+      );
       const submitResult = await submitServiceOrderRequest(payload);
 
       setSubmitState("success");
@@ -364,7 +477,38 @@ export default function EmergencyLeakServiceForm() {
     event.preventDefault();
     setSubmitState("idle");
 
-    const validation = validateEmergencyLeakServiceForm(formData);
+    // Auto-add the editor property if the user filled it out but didn't click Add
+    let submissionFormData = formData;
+    if (isPropertyDirty(editorProperty)) {
+      const propErrors = validateProperty(editorProperty);
+      if (Object.keys(propErrors).length > 0) {
+        setEditorErrors(propErrors);
+        return;
+      }
+      const updated =
+        editingPropertyIndex !== null
+          ? formData.leakingProperties.map((p, i) =>
+              i === editingPropertyIndex ? { ...editorProperty } : p,
+            )
+          : [...formData.leakingProperties, { ...editorProperty }];
+      submissionFormData = { ...formData, leakingProperties: updated };
+      setFormData(submissionFormData);
+      setEditorProperty({ ...EMPTY_PROPERTY });
+      setEditingPropertyIndex(null);
+      setEditorErrors({});
+    }
+
+    const validation = validateEmergencyLeakServiceForm(submissionFormData);
+    if (!signatureDataUrl) {
+      validation.signature = "Signature is required.";
+    }
+    if (!signatureName.trim()) {
+      validation.signatureName = "Name is required.";
+    }
+    if (!billingTermsAcknowledged) {
+      validation.billingTermsAcknowledged =
+        "You must acknowledge the billing terms.";
+    }
     setErrors(validation);
 
     if (Object.keys(validation).length > 0) {
@@ -375,12 +519,14 @@ export default function EmergencyLeakServiceForm() {
   }
 
   function prefillMockData() {
-    setFormData(MOCK_FORM_DATA);
+    // Load everything except properties into the form; table stays empty
+    setFormData({ ...MOCK_FORM_DATA, leakingProperties: [] });
     setServiceOrderLookupValue(MOCK_LOOKUP_VALUES.serviceOrderNumber);
     setEmailLookupValue(MOCK_LOOKUP_VALUES.email);
     setErrors({});
     setEditorErrors({});
-    setEditorProperty({ ...EMPTY_PROPERTY });
+    // Pre-fill the editor so the user can review and click "Add Property"
+    setEditorProperty({ ...MOCK_FORM_DATA.leakingProperties[0] });
     setEditingPropertyIndex(null);
     setLookupResults(null);
     setLookupMessage("Mock data loaded.");
@@ -397,6 +543,9 @@ export default function EmergencyLeakServiceForm() {
     setEditorErrors({});
     setEditorProperty({ ...EMPTY_PROPERTY });
     setEditingPropertyIndex(null);
+    setSignatureDataUrl("");
+    setSignatureName("");
+    setBillingTermsAcknowledged(false);
     setLookupResults(null);
     setLookupMessage("Form cleared.");
     setSubmitState("idle");
@@ -421,6 +570,9 @@ export default function EmergencyLeakServiceForm() {
     setSubmitRequestId("");
     setSubmitSuccessMessage("");
     setIsSuccessModalOpen(false);
+    setSignatureName("");
+    setBillingTermsAcknowledged(false);
+    setSignatureDataUrl("");
   }
 
   if (activeReferenceId && !isSuccessModalOpen) {
@@ -615,6 +767,9 @@ export default function EmergencyLeakServiceForm() {
           onFieldChange={updateField}
           prefillClients={lookupResults?.clients ?? []}
           onPrefillClient={applyClientSelection}
+          onContactNameBlur={(name) => {
+            setSignatureName(name);
+          }}
         />
 
         <BillingInfoSection
@@ -640,6 +795,27 @@ export default function EmergencyLeakServiceForm() {
           onPrefillLeak={applyLeakSelection}
         />
 
+        <SignatureSection
+          value={signatureDataUrl}
+          onChange={setSignatureDataUrl}
+          error={errors.signature}
+          signatureName={signatureName}
+          onSignatureNameChange={setSignatureName}
+          signatureNameError={errors.signatureName}
+          billingTermsAcknowledged={billingTermsAcknowledged}
+          onBillingTermsChange={(checked) => {
+            setBillingTermsAcknowledged(checked);
+            if (checked) {
+              setErrors((prev) => {
+                const next = { ...prev };
+                delete next.billingTermsAcknowledged;
+                return next;
+              });
+            }
+          }}
+          billingTermsError={errors.billingTermsAcknowledged}
+        />
+
         {/* Show error when submit is attempted with no properties */}
         {errors.siteName === "At least one property is required." &&
           formData.leakingProperties.length === 0 && (
@@ -649,13 +825,23 @@ export default function EmergencyLeakServiceForm() {
           )}
 
         <div className="flex flex-col gap-3  md:flex-row md:justify-end">
-          {/* <button
+          <button
+            type="button"
+            onClick={() => {
+              window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+              clearForm();
+            }}
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Clear Local Storage
+          </button>
+          <button
             type="button"
             onClick={prefillMockData}
             className="inline-flex items-center justify-center rounded-md border border-[#2f9750] px-6 py-3 text-sm font-semibold text-[#2f9750] transition hover:bg-[#2f9750]/10"
           >
             Prefill Mock Data
-          </button> */}
+          </button>
           <button
             type="submit"
             disabled={isSubmitting}
@@ -745,6 +931,66 @@ export default function EmergencyLeakServiceForm() {
                   className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                 >
                   Submit Another
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isDeletePropertyModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+              <p className="text-base font-bold text-slate-900">
+                Delete Property?
+              </p>
+              <p className="mt-3 text-sm text-slate-700">
+                Are you sure you want to delete this property? This action
+                cannot be undone.
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={cancelDeleteProperty}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteProperty}
+                  className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isUpdatePropertyModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+              <p className="text-base font-bold text-slate-900">
+                Update Property?
+              </p>
+              <p className="mt-3 text-sm text-slate-700">
+                Do you want to save your changes to this property before closing
+                the editor?
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={discardUpdateProperty}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Discard Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmUpdateProperty}
+                  className="inline-flex items-center justify-center rounded-md bg-[#2f9750] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#268a45]"
+                >
+                  Yes, Update
                 </button>
               </div>
             </div>

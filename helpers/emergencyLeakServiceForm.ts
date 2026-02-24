@@ -19,7 +19,7 @@ export const EMPTY_PROPERTY: LeakingProperty = {
   tenantContactEmail: "",
   hoursOfOperation: "",
   leakLocation: "Middle",
-  leakNear: "Other",
+  leakNear: "HVACDuct",
   leakNearOther: "",
   hasAccessCode: false,
   accessCode: "",
@@ -96,7 +96,7 @@ export const MOCK_LOOKUP_VALUES = {
   email: "jordan.smith@acmeretail.com",
 };
 
-function isPropertyDirty(property: LeakingProperty): boolean {
+export function isPropertyDirty(property: LeakingProperty): boolean {
   const initialProperty = EMPTY_PROPERTY;
 
   const propertyStringKeys: (keyof LeakingProperty)[] = [

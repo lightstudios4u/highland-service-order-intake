@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from "react";
+import { LuHouse } from "react-icons/lu";
 import {
   LeakDetailsPayload,
   LeakingProperty,
@@ -108,8 +109,8 @@ export default function LeakingPropertySection({
   return (
     <section className="overflow-hidden rounded-lg border border-slate-300">
       <div className="bg-slate-700 px-4 py-3">
-        <h2 className="text-lg font-bold text-white">
-          Property Info
+        <h2 className="flex items-center gap-2 text-lg font-bold text-white">
+          <LuHouse className="text-xl" /> Property Info
           {properties.length > 0 && (
             <span className="ml-2 text-sm font-normal text-slate-300">
               ({properties.length}{" "}
@@ -126,6 +127,7 @@ export default function LeakingPropertySection({
               properties={properties}
               editingIndex={editingIndex}
               onEdit={onEditSelect}
+              onCancelEdit={onCancelEdit}
               onCopy={onCopy}
               onDelete={onDelete}
             />
@@ -133,21 +135,12 @@ export default function LeakingPropertySection({
         )}
 
         {/* ── Editor heading ── */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h3 className="text-sm font-bold text-slate-700">
             {isEditing
               ? `Editing Property #${editingIndex + 1}`
               : "New Property"}
           </h3>
-          {isEditing && (
-            <button
-              type="button"
-              onClick={onCancelEdit}
-              className="text-sm font-medium text-slate-500 underline transition hover:text-slate-700"
-            >
-              Cancel Edit
-            </button>
-          )}
         </div>
 
         {options.length > 0 && (
@@ -278,39 +271,48 @@ export default function LeakingPropertySection({
             </select>
           </label>
 
-          <label
-            className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
-            htmlFor="leakNear"
+          <div
+            className={`flex flex-col gap-2 ${displayed.leakNear === "Other" || editorProperty.leakNear === "Other" ? "md:col-span-2" : ""}`}
           >
-            Leak Near
-            <select
-              id="leakNear"
-              name="leakNear"
-              value={displayed.leakNear}
-              onChange={(event) =>
-                onEditorChange(
-                  "leakNear",
-                  event.target.value as LeakingProperty["leakNear"],
-                )
-              }
-              className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${previewInputClass}`}
+            <label
+              className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
+              htmlFor="leakNear"
             >
-              <option value="HVACDuct">HVAC Duct</option>
-              <option value="Skylight">Skylight</option>
-              <option value="Wall">Wall</option>
-              <option value="Drain">Drain</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
+              Leak Near
+              <select
+                id="leakNear"
+                name="leakNear"
+                value={displayed.leakNear}
+                onChange={(event) =>
+                  onEditorChange(
+                    "leakNear",
+                    event.target.value as LeakingProperty["leakNear"],
+                  )
+                }
+                className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${previewInputClass}`}
+              >
+                <option value="HVACDuct">HVAC Duct</option>
+                <option value="Skylight">Skylight</option>
+                <option value="Wall">Wall</option>
+                <option value="Drain">Drain</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
 
-          <FormInput
-            id="leakNearOther"
-            label="Leak Near Other"
-            value={displayed.leakNearOther}
-            onChange={handleInput("leakNearOther")}
-            error={errors.leakNearOther}
-            previewing={isPreviewing}
-          />
+            {(displayed.leakNear === "Other" ||
+              editorProperty.leakNear === "Other") && (
+              <FormTextarea
+                id="leakNearOther"
+                label="Describe Leak Location Thoroughly"
+                value={displayed.leakNearOther}
+                onChange={(event) =>
+                  onEditorChange("leakNearOther", event.target.value)
+                }
+                error={errors.leakNearOther}
+                previewing={isPreviewing}
+              />
+            )}
+          </div>
           <label
             className="flex flex-col gap-2 text-sm font-semibold text-slate-800"
             htmlFor="roofPitch"
@@ -332,17 +334,9 @@ export default function LeakingPropertySection({
               <option value="SteepShingleTile">Steep Shingle/Tile</option>
             </select>
           </label>
-          <FormInput
-            id="accessCode"
-            label="Access Code"
-            value={displayed.accessCode}
-            onChange={handleInput("accessCode")}
-            error={errors.accessCode}
-            previewing={isPreviewing}
-          />
 
-          <div className="md:col-start-2">
-            <div className="flex w-full flex-col gap-2 rounded-md border border-slate-200 p-3">
+          <div className="md:col-span-2">
+            <div className="flex w-full flex-col gap-3 rounded-md border border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-8 sm:gap-y-3">
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                 <input
                   type="checkbox"
@@ -394,9 +388,20 @@ export default function LeakingPropertySection({
                 Ladder Required
               </label>
             </div>
-          </div>       
-          
 
+            {displayed.hasAccessCode && (
+              <div className="mt-3 max-w-sm">
+                <FormInput
+                  id="accessCode"
+                  label="Access Code"
+                  value={displayed.accessCode}
+                  onChange={handleInput("accessCode")}
+                  error={errors.accessCode}
+                  previewing={isPreviewing}
+                />
+              </div>
+            )}
+          </div>
 
           <FormTextarea
             id="comments"
@@ -410,23 +415,24 @@ export default function LeakingPropertySection({
         </div>
 
         {/* ── Add / Update buttons ── */}
-        <div className="mt-5 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onAddOrUpdate}
-            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-          >
-            {isEditing ? "Update Property" : "Add Property"}
-          </button>
+        <div className="mt-5 flex items-center justify-end gap-3">
           {isEditing && (
             <button
               type="button"
               onClick={onCancelEdit}
-              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
             >
               Cancel
             </button>
           )}
+          <button
+            type="button"
+            onClick={onAddOrUpdate}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-700"
+          >
+            <LuHouse className="text-lg" />
+            {isEditing ? "Update Property" : "Add Property"}
+          </button>
         </div>
 
         {/* Error when no properties added yet at submit time */}

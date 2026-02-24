@@ -42,7 +42,11 @@ describe("serviceOrderPayload", () => {
         clientDynamoCountId: 99,
       });
 
-      const payload = buildServiceOrderRequestPayload(formData);
+      const payload = buildServiceOrderRequestPayload(
+        formData,
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
 
       expect(payload.client.dynamoAccountId).toBe(55);
       expect(payload.client.dynamoContactId).toBe(99);
@@ -54,7 +58,11 @@ describe("serviceOrderPayload", () => {
 
     it("maps billing fields correctly", () => {
       const formData = makeFormData({ billingDynamoId: 88 });
-      const payload = buildServiceOrderRequestPayload(formData);
+      const payload = buildServiceOrderRequestPayload(
+        formData,
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
 
       expect(payload.billing.dynamoId).toBe(88);
       expect(payload.billing.entityBillToName).toBe("Acme AP");
@@ -65,19 +73,31 @@ describe("serviceOrderPayload", () => {
     });
 
     it("converts leakLocation string to numeric enum", () => {
-      const payload = buildServiceOrderRequestPayload(makeFormData());
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
       // "Front" → 1
       expect(payload.leakDetails.leakLocation).toBe(1);
     });
 
     it("converts leakNear string to numeric enum", () => {
-      const payload = buildServiceOrderRequestPayload(makeFormData());
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
       // "HVACDuct" → 1
       expect(payload.leakDetails.leakNear).toBe(1);
     });
 
     it("converts roofPitch string to numeric enum", () => {
-      const payload = buildServiceOrderRequestPayload(makeFormData());
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
       // "FlatRoof" → 1
       expect(payload.leakDetails.roofPitch).toBe(1);
     });
@@ -97,7 +117,11 @@ describe("serviceOrderPayload", () => {
           },
         ],
       });
-      const payload = buildServiceOrderRequestPayload(formData);
+      const payload = buildServiceOrderRequestPayload(
+        formData,
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
 
       expect(payload.leakDetails.leakLocation).toBe(2); // Middle
       expect(payload.leakDetails.leakNear).toBe(2); // Skylight
@@ -130,7 +154,11 @@ describe("serviceOrderPayload", () => {
         ],
       });
 
-      const payload = buildServiceOrderRequestPayload(formData);
+      const payload = buildServiceOrderRequestPayload(
+        formData,
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
 
       expect(payload.leakDetails.siteName).toBe("Primary Site");
       expect(payload.additionalLeaks).toHaveLength(1);
@@ -140,8 +168,31 @@ describe("serviceOrderPayload", () => {
     });
 
     it("returns empty additionalLeaks when only one property", () => {
-      const payload = buildServiceOrderRequestPayload(makeFormData());
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        "data:image/png;base64,TEST",
+        "John Smith",
+      );
       expect(payload.additionalLeaks).toEqual([]);
+    });
+
+    it("includes signatureData in the payload", () => {
+      const sig = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        sig,
+        "John Smith",
+      );
+      expect(payload.SignatureData).toBe(sig);
+    });
+
+    it("includes SignatureName in the payload", () => {
+      const payload = buildServiceOrderRequestPayload(
+        makeFormData(),
+        "data:image/png;base64,TEST",
+        "Jane Doe",
+      );
+      expect(payload.SignatureName).toBe("Jane Doe");
     });
   });
 });

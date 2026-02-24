@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { LuSearch } from "react-icons/lu";
 
 type IntakeHeaderProps = {
   onReset?: () => void;
@@ -27,6 +28,16 @@ export default function IntakeHeader({
   const [lookupMode, setLookupMode] = useState<"email" | "serviceOrder">(
     "serviceOrder",
   );
+
+  function handleLookupValueChange(value: string) {
+    onLookupValueChange(value);
+    // Auto-detect mode based on input
+    if (value.includes("@")) {
+      setLookupMode("email");
+    } else if (lookupMode === "email" && !value.includes("@")) {
+      setLookupMode("serviceOrder");
+    }
+  }
 
   function handleLookup() {
     if (!lookupValue.trim() || isLookingUp) return;
@@ -79,9 +90,6 @@ export default function IntakeHeader({
       <div className="relative z-10 border-t border-slate-700 pt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-semibold text-white">
-              Customer Lookup:
-            </span>
             <label className="flex cursor-pointer items-center gap-1.5 text-sm text-slate-200">
               <input
                 type="radio"
@@ -102,18 +110,21 @@ export default function IntakeHeader({
               />
               Email
             </label>
-            <input
-              type={lookupMode === "email" ? "email" : "text"}
-              value={lookupValue}
-              onChange={(e) => onLookupValueChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                lookupMode === "email"
-                  ? "john@company.com"
-                  : "ELS-26-01-4837 or ref ID"
-              }
-              className="w-48 rounded-md border border-slate-500 bg-slate-800/60 px-3 py-1.5 text-sm text-white placeholder-slate-400 outline-none transition focus:border-[#2f9750] focus:ring-1 focus:ring-[#2f9750] sm:w-56"
-            />
+            <div className="relative">
+              <LuSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+              <input
+                type={lookupMode === "email" ? "email" : "text"}
+                value={lookupValue}
+                onChange={(e) => handleLookupValueChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  lookupMode === "email"
+                    ? "Customer lookup — john@company.com"
+                    : "Customer lookup — ELS-26-01-4837 or ref ID"
+                }
+                className="w-72 rounded-md border border-slate-500 bg-slate-800/60 py-1.5 pl-8 pr-3 text-sm text-white placeholder-slate-400 outline-none transition focus:border-[#2f9750] focus:ring-1 focus:ring-[#2f9750] sm:w-96"
+              />
+            </div>
             <button
               type="button"
               onClick={handleLookup}

@@ -5,6 +5,7 @@ type PropertyTableProps = {
   properties: LeakingProperty[];
   editingIndex: number | null;
   onEdit: (index: number) => void;
+  onCancelEdit: () => void;
   onCopy: (index: number) => void;
   onDelete: (index: number) => void;
 };
@@ -19,6 +20,7 @@ export default function PropertyTable({
   properties,
   editingIndex,
   onEdit,
+  onCancelEdit,
   onCopy,
   onDelete,
 }: PropertyTableProps) {
@@ -71,8 +73,10 @@ export default function PropertyTable({
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      onClick={() => onEdit(index)}
-                      title="Edit"
+                      onClick={() =>
+                        isEditing ? onCancelEdit() : onEdit(index)
+                      }
+                      title={isEditing ? "Stop editing" : "Edit"}
                       className={`rounded p-1.5 transition ${
                         isEditing
                           ? "bg-emerald-600 text-white"

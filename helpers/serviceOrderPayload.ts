@@ -59,6 +59,8 @@ function toLeakDetailsPayload(
 
 export function buildServiceOrderRequestPayload(
   formData: IntakeFormData,
+  signatureDataUrl: string,
+  signatureName: string,
 ): ServiceOrderIntakeRequest {
   const [primaryProperty, ...additionalProperties] = formData.leakingProperties;
 
@@ -84,5 +86,7 @@ export function buildServiceOrderRequestPayload(
     additionalLeaks: additionalProperties.map((property) =>
       toLeakDetailsPayload(property),
     ),
+    SignatureData: signatureDataUrl,
+    SignatureName: signatureName,
   };
 }

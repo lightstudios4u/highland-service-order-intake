@@ -53,7 +53,14 @@ export type IntakeFormData = {
 };
 
 export type ValidationErrors = Partial<
-  Record<keyof IntakeFormData | keyof LeakingProperty, string>
+  Record<
+    | keyof IntakeFormData
+    | keyof LeakingProperty
+    | "signature"
+    | "signatureName"
+    | "billingTermsAcknowledged",
+    string
+  >
 >;
 
 export type PrefillLookupRequest = {
@@ -179,6 +186,8 @@ export type ServiceOrderIntakeRequest = {
   billing: ServiceOrderIntakeBilling;
   leakDetails: ServiceOrderIntakeLeakDetails;
   additionalLeaks: ServiceOrderIntakeLeakDetails[];
+  SignatureData: string;
+  SignatureName: string;
 };
 
 export type ServiceOrderIntakeResponse = {
