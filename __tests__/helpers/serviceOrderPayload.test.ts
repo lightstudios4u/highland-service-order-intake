@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { buildServiceOrderRequestPayload } from "@/helpers/serviceOrderPayload";
 import { IntakeFormData } from "@/types/emergencyLeakService";
-import { INITIAL_FORM_DATA } from "@/helpers/emergencyLeakServiceForm";
+import {
+  INITIAL_FORM_DATA,
+  EMPTY_PROPERTY,
+} from "@/helpers/emergencyLeakServiceForm";
 
 function makeFormData(overrides: Partial<IntakeFormData> = {}): IntakeFormData {
   return {
@@ -17,7 +20,7 @@ function makeFormData(overrides: Partial<IntakeFormData> = {}): IntakeFormData {
     billingBillToEmail: "ap@acme.com",
     leakingProperties: [
       {
-        ...INITIAL_FORM_DATA.leakingProperties[0],
+        ...EMPTY_PROPERTY,
         siteName: "Acme Warehouse",
         siteAddress: "456 Industrial Pkwy",
         siteCity: "Denver",
@@ -83,7 +86,7 @@ describe("serviceOrderPayload", () => {
       const formData = makeFormData({
         leakingProperties: [
           {
-            ...INITIAL_FORM_DATA.leakingProperties[0],
+            ...EMPTY_PROPERTY,
             siteName: "Site",
             siteAddress: "1 St",
             siteCity: "City",
@@ -105,7 +108,7 @@ describe("serviceOrderPayload", () => {
       const formData = makeFormData({
         leakingProperties: [
           {
-            ...INITIAL_FORM_DATA.leakingProperties[0],
+            ...EMPTY_PROPERTY,
             siteName: "Primary Site",
             siteAddress: "1 St",
             siteCity: "City",
@@ -115,7 +118,7 @@ describe("serviceOrderPayload", () => {
             roofPitch: "FlatRoof",
           },
           {
-            ...INITIAL_FORM_DATA.leakingProperties[0],
+            ...EMPTY_PROPERTY,
             siteName: "Secondary Site",
             siteAddress: "2 St",
             siteCity: "City",
