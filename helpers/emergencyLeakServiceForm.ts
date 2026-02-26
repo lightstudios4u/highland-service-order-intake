@@ -18,15 +18,15 @@ export const EMPTY_PROPERTY: LeakingProperty = {
   tenantContactCell: "",
   tenantContactEmail: "",
   hoursOfOperation: "",
-  leakLocation: "Middle",
-  leakNear: "HVACDuct",
+  leakLocation: "",
+  leakNear: "",
   leakNearOther: "",
   hasAccessCode: false,
   accessCode: "",
   isSaturdayAccessPermitted: false,
   isKeyRequired: false,
   isLadderRequired: false,
-  roofPitch: "FlatRoof",
+  roofPitch: "",
   comments: "",
 };
 

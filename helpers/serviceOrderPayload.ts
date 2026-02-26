@@ -7,13 +7,13 @@ import {
   ServiceOrderIntakeRequest,
 } from "@/types/emergencyLeakService";
 
-const LEAK_LOCATION_MAP: Record<LeakLocationName, number> = {
+const LEAK_LOCATION_MAP: Record<string, number> = {
   Front: 1,
   Middle: 2,
   Back: 3,
 };
 
-const LEAK_NEAR_MAP: Record<LeakNearTypeName, number> = {
+const LEAK_NEAR_MAP: Record<string, number> = {
   HVACDuct: 1,
   Skylight: 2,
   Wall: 3,
@@ -21,7 +21,7 @@ const LEAK_NEAR_MAP: Record<LeakNearTypeName, number> = {
   Other: 5,
 };
 
-const ROOF_PITCH_MAP: Record<RoofPitchTypeName, number> = {
+const ROOF_PITCH_MAP: Record<string, number> = {
   FlatRoof: 1,
   SteepShingleTile: 2,
 };
@@ -44,15 +44,15 @@ function toLeakDetailsPayload(
     tenantContactCell: property.tenantContactCell,
     tenantContactEmail: property.tenantContactEmail,
     hoursOfOperation: property.hoursOfOperation,
-    leakLocation: LEAK_LOCATION_MAP[property.leakLocation],
-    leakNear: LEAK_NEAR_MAP[property.leakNear],
+    leakLocation: LEAK_LOCATION_MAP[property.leakLocation] ?? null,
+    leakNear: LEAK_NEAR_MAP[property.leakNear] ?? null,
     leakNearOther: property.leakNearOther,
     hasAccessCode: property.hasAccessCode,
     accessCode: property.accessCode,
     isSaturdayAccessPermitted: property.isSaturdayAccessPermitted,
     isKeyRequired: property.isKeyRequired,
     isLadderRequired: property.isLadderRequired,
-    roofPitch: ROOF_PITCH_MAP[property.roofPitch],
+    roofPitch: ROOF_PITCH_MAP[property.roofPitch] ?? null,
     comments: property.comments,
   };
 }

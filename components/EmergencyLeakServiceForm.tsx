@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { LuFileWarning } from "react-icons/lu";
 
 import {
@@ -64,6 +64,21 @@ type EmergencyLeakServiceDraft = {
   emailLookupValue: string;
 };
 
+const DUPLICATE_CHECK_KEYS = (
+  Object.keys(EMPTY_PROPERTY) as (keyof LeakingProperty)[]
+).filter((k) => k !== "dynamoId" && k !== "jobNo");
+
+function findDuplicateIndex(
+  properties: LeakingProperty[],
+  candidate: LeakingProperty,
+  skipIndex: number | null,
+): number {
+  return properties.findIndex((p, i) => {
+    if (i === skipIndex) return false;
+    return DUPLICATE_CHECK_KEYS.every((k) => candidate[k] === p[k]);
+  });
+}
+
 export default function EmergencyLeakServiceForm() {
   const [formData, setFormData] = useState<IntakeFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -101,6 +116,9 @@ export default function EmergencyLeakServiceForm() {
   const [deletePropertyIndex, setDeletePropertyIndex] = useState<number | null>(
     null,
   );
+  const [isDuplicateLeakModalOpen, setIsDuplicateLeakModalOpen] =
+    useState(false);
+  const pendingDuplicateSave = useRef<(() => void) | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const [signatureName, setSignatureName] = useState("");
   const [billingTermsAcknowledged, setBillingTermsAcknowledged] =
@@ -273,14 +291,7 @@ export default function EmergencyLeakServiceForm() {
 
   // ── Property array operations ──
 
-  function handleAddOrUpdateProperty() {
-    const propErrors = validateProperty(editorProperty);
-    if (Object.keys(propErrors).length > 0) {
-      setEditorErrors(propErrors);
-      return;
-    }
-    setEditorErrors({});
-
+  function commitAddOrUpdate() {
     setFormData((current) => {
       const updated = [...current.leakingProperties];
       if (editingPropertyIndex !== null) {
@@ -290,10 +301,79 @@ export default function EmergencyLeakServiceForm() {
       }
       return { ...current, leakingProperties: updated };
     });
-
-    // Reset editor to blank "add new" mode
     setEditorProperty({ ...EMPTY_PROPERTY });
     setEditingPropertyIndex(null);
+  }
+
+  function handleAddOrUpdateProperty() {
+    const propErrors = validateProperty(editorProperty);
+    if (Object.keys(propErrors).length > 0) {
+      setEditorErrors(propErrors);
+      return;
+    }
+    setEditorErrors({});
+    const dupIdx = findDuplicateIndex(
+      formData.leakingProperties,
+      editorProperty,
+      editingPropertyIndex,
+    );
+    if (dupIdx !== -1) {
+      pendingDuplicateSave.current = commitAddOrUpdate;
+      setIsDuplicateLeakModalOpen(true);
+      return;
+    }
+    commitAddOrUpdate();
+  }
+
+  function commitSaveAndAddAnother() {
+    setFormData((current) => ({
+      ...current,
+      leakingProperties: [...current.leakingProperties, { ...editorProperty }],
+    }));
+    setEditorProperty({ ...EMPTY_PROPERTY });
+    setEditingPropertyIndex(null);
+  }
+
+  // "Save Leak and Add Another" — validates, saves, clears editor for a fresh entry
+  function handleSaveAndAddAnother() {
+    const propErrors = validateProperty(editorProperty);
+    if (Object.keys(propErrors).length > 0) {
+      setEditorErrors(propErrors);
+      return;
+    }
+    setEditorErrors({});
+    const dupIdx = findDuplicateIndex(
+      formData.leakingProperties,
+      editorProperty,
+      null,
+    );
+    if (dupIdx !== -1) {
+      pendingDuplicateSave.current = commitSaveAndAddAnother;
+      setIsDuplicateLeakModalOpen(true);
+      return;
+    }
+    commitSaveAndAddAnother();
+  }
+
+  // "Add Another Leak" / Clone — populates editor with only address skeleton
+  function cloneIntoEditor(source: LeakingProperty) {
+    setEditorProperty({
+      ...EMPTY_PROPERTY,
+      siteName: source.siteName,
+      siteAddress: source.siteAddress,
+      siteCity: source.siteCity,
+      siteZip: source.siteZip,
+    });
+    setEditingPropertyIndex(null);
+    setEditorErrors({});
+  }
+
+  function handleAddAnotherLeak() {
+    const source =
+      formData.leakingProperties[editingPropertyIndex ?? 0] ??
+      formData.leakingProperties[0];
+    if (!source) return;
+    cloneIntoEditor(source);
   }
 
   function handleEditProperty(index: number) {
@@ -349,17 +429,7 @@ export default function EmergencyLeakServiceForm() {
   }
 
   function handleCopyProperty(index: number) {
-    setFormData((current) => {
-      const copy = {
-        ...current.leakingProperties[index],
-        dynamoId: null,
-        jobNo: "",
-      };
-      return {
-        ...current,
-        leakingProperties: [...current.leakingProperties, copy],
-      };
-    });
+    cloneIntoEditor(formData.leakingProperties[index]);
   }
 
   function handleDeleteProperty(index: number) {
@@ -804,6 +874,7 @@ export default function EmergencyLeakServiceForm() {
           errors={editorErrors}
           onEditorChange={updateEditorField}
           onAddOrUpdate={handleAddOrUpdateProperty}
+          onSaveAndAddAnother={handleSaveAndAddAnother}
           onEditSelect={handleEditProperty}
           onCancelEdit={handleCancelEdit}
           onCopy={handleCopyProperty}
@@ -859,6 +930,43 @@ export default function EmergencyLeakServiceForm() {
             Clear Form
           </button> */}
         </div>
+
+        {isDuplicateLeakModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+            <div className="w-full max-w-md rounded-xl border border-amber-200 bg-white p-6 shadow-xl">
+              <p className="text-base font-bold text-slate-900">
+                Duplicate Leak Detected
+              </p>
+              <p className="mt-3 text-sm text-slate-700">
+                This leak appears to be identical to one already in your list.
+                Do you want to add it anyway?
+              </p>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    pendingDuplicateSave.current = null;
+                    setIsDuplicateLeakModalOpen(false);
+                  }}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDuplicateLeakModalOpen(false);
+                    pendingDuplicateSave.current?.();
+                    pendingDuplicateSave.current = null;
+                  }}
+                  className="inline-flex items-center justify-center rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+                >
+                  Add Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isConfirmModalOpen ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">

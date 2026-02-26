@@ -4,6 +4,8 @@ import { LuCopy, LuPencil, LuTrash2 } from "react-icons/lu";
 type PropertyTableProps = {
   properties: LeakingProperty[];
   editingIndex: number | null;
+  selectedIndex: number | null;
+  onSelect: (index: number) => void;
   onEdit: (index: number) => void;
   onCancelEdit: () => void;
   onCopy: (index: number) => void;
@@ -19,6 +21,8 @@ const LEAK_LOCATION_LABELS: Record<string, string> = {
 export default function PropertyTable({
   properties,
   editingIndex,
+  selectedIndex,
+  onSelect,
   onEdit,
   onCancelEdit,
   onCopy,
@@ -35,20 +39,24 @@ export default function PropertyTable({
             <th className="px-3 py-2">Site Name</th>
             <th className="hidden px-3 py-2 md:table-cell">Address</th>
             <th className="hidden px-3 py-2 lg:table-cell">City</th>
-            <th className="hidden px-3 py-2 lg:table-cell">Leak Location</th>
+            <th className="hidden px-3 py-2 md:table-cell">Leak Location</th>
             <th className="px-3 py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {properties.map((property, index) => {
             const isEditing = editingIndex === index;
+            const isSelected = selectedIndex === index && !isEditing;
             return (
               <tr
                 key={index}
+                onClick={() => !isEditing && onSelect(index)}
                 className={`border-b border-slate-100 transition ${
                   isEditing
                     ? "bg-emerald-50 ring-1 ring-inset ring-emerald-300"
-                    : "hover:bg-slate-50"
+                    : isSelected
+                      ? "cursor-pointer bg-sky-50 ring-1 ring-inset ring-sky-300"
+                      : "cursor-pointer hover:bg-slate-50"
                 }`}
               >
                 <td className="px-3 py-2 font-medium text-slate-700">
@@ -65,11 +73,12 @@ export default function PropertyTable({
                 <td className="hidden px-3 py-2 text-slate-600 lg:table-cell">
                   {property.siteCity || "—"}
                 </td>
-                <td className="hidden px-3 py-2 text-slate-600 lg:table-cell">
-                  {LEAK_LOCATION_LABELS[property.leakLocation] ??
-                    property.leakLocation}
+                <td className="hidden px-3 py-2 text-slate-600 md:table-cell">
+                  {(LEAK_LOCATION_LABELS[property.leakLocation] ??
+                    property.leakLocation) ||
+                    "—"}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-1">
                     <button
                       type="button"
@@ -88,7 +97,7 @@ export default function PropertyTable({
                     <button
                       type="button"
                       onClick={() => onCopy(index)}
-                      title="Copy"
+                      title="Copy info to new leak"
                       className="rounded p-1.5 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
                     >
                       <LuCopy className="h-4 w-4" />

@@ -1,13 +1,14 @@
-export type LeakLocationName = "Front" | "Middle" | "Back";
+export type LeakLocationName = "Front" | "Middle" | "Back" | "";
 
 export type LeakNearTypeName =
   | "HVACDuct"
   | "Skylight"
   | "Wall"
   | "Drain"
-  | "Other";
+  | "Other"
+  | "";
 
-export type RoofPitchTypeName = "FlatRoof" | "SteepShingleTile";
+export type RoofPitchTypeName = "FlatRoof" | "SteepShingleTile" | "";
 
 export type LeakingProperty = {
   dynamoId: number | null;
