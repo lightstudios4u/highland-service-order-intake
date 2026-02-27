@@ -24,6 +24,7 @@ type LeakingPropertySectionProps = {
     value: LeakingProperty[K],
   ) => void;
   onAddOrUpdate: () => void;
+  onSaveAndAddAnother: () => void;
   onEditSelect: (index: number) => void;
   onCancelEdit: () => void;
   onCopy: (index: number) => void;
@@ -39,6 +40,7 @@ export default function LeakingPropertySection({
   errors,
   onEditorChange,
   onAddOrUpdate,
+  onSaveAndAddAnother,
   onEditSelect,
   onCancelEdit,
   onCopy,
@@ -49,6 +51,7 @@ export default function LeakingPropertySection({
   const [previewData, setPreviewData] = useState<LeakDetailsPayload | null>(
     null,
   );
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const isPreviewing = previewData !== null;
 
@@ -106,6 +109,22 @@ export default function LeakingPropertySection({
 
   const isEditing = editingIndex !== null;
 
+  function handleRowSelect(index: number) {
+    // Toggle selection; deselect if already selected
+    setSelectedIndex((prev) => (prev === index ? null : index));
+  }
+
+  function handleEditSelect(index: number) {
+    setSelectedIndex(null);
+    onEditSelect(index);
+  }
+
+  function handleCopyFromSelection() {
+    if (selectedIndex === null) return;
+    onCopy(selectedIndex);
+    setSelectedIndex(null);
+  }
+
   return (
     <section className="rounded-lg border border-slate-300">
       <div className="rounded-t-lg bg-slate-700 px-4 py-3">
@@ -119,28 +138,53 @@ export default function LeakingPropertySection({
         </h2>
       </div>
       <div className="bg-white p-4">
-        {/* ── Summary table ── */}
+        {/* ── Summary table + controls row ── */}
         {properties.length > 0 && (
           <div className="mb-5">
             <PropertyTable
               properties={properties}
               editingIndex={editingIndex}
-              onEdit={onEditSelect}
+              selectedIndex={selectedIndex}
+              onSelect={handleRowSelect}
+              onEdit={handleEditSelect}
               onCancelEdit={onCancelEdit}
-              onCopy={onCopy}
+              onCopy={(index) => {
+                onCopy(index);
+                setSelectedIndex(null);
+              }}
               onDelete={onDelete}
             />
+            {/* Copy info to new leak — shown when a row is selected */}
+            {selectedIndex !== null && !isEditing && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs text-slate-500">
+                  Leak #{selectedIndex + 1} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyFromSelection}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-sky-500 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+                >
+                  Copy info to new leak
+                </button>
+              </div>
+            )}
+            {/* Prefill dropdown */}
+            {options.length > 0 && (
+              <div className="mt-3">
+                <PrefillDropdown
+                  options={options}
+                  onSelect={onPrefillLeak}
+                  onPreview={setPreviewData}
+                  accentColor="green"
+                />
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Editor heading ── */}
-        {/* <div className="mb-4">
-          <h3 className="text-sm font-bold text-slate-700">
-            {isEditing ? `Editing Property #${editingIndex + 1}` : "New Leak"}
-          </h3>
-        </div> */}
-
-        {options.length > 0 && (
+        {/* Prefill dropdown when no leaks yet */}
+        {properties.length === 0 && options.length > 0 && (
           <div className="mb-5">
             <PrefillDropdown
               options={options}
@@ -150,6 +194,15 @@ export default function LeakingPropertySection({
             />
           </div>
         )}
+        {isEditing && editingIndex !== null && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <LuHouse className="shrink-0 text-emerald-600" />
+            <span className="text-sm font-semibold text-emerald-800">
+              Editing Leak #{editingIndex + 1}
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2">
           <FormInput
             id="siteName"
@@ -169,7 +222,7 @@ export default function LeakingPropertySection({
           />
           <FormInput
             id="siteAddress2"
-            label="Site Address 2"
+            label="Address 2/Suite #"
             value={displayed.siteAddress2}
             onChange={handleInput("siteAddress2")}
             error={errors.siteAddress2}
@@ -262,6 +315,7 @@ export default function LeakingPropertySection({
               }
               className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${previewInputClass}`}
             >
+              <option value="">Choose one</option>
               <option value="Front">Front</option>
               <option value="Middle">Middle</option>
               <option value="Back">Back</option>
@@ -288,6 +342,7 @@ export default function LeakingPropertySection({
                 }
                 className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${previewInputClass}`}
               >
+                <option value="">Choose one</option>
                 <option value="HVACDuct">HVAC Duct</option>
                 <option value="Skylight">Skylight</option>
                 <option value="Wall">Wall</option>
@@ -327,6 +382,7 @@ export default function LeakingPropertySection({
               }
               className={`w-full rounded-md border px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200 ${previewInputClass}`}
             >
+              <option value="">Choose one</option>
               <option value="FlatRoof">Flat Roof</option>
               <option value="SteepShingleTile">Steep Shingle/Tile</option>
             </select>
@@ -402,7 +458,7 @@ export default function LeakingPropertySection({
 
           <FormTextarea
             id="comments"
-            label="Comments"
+            label="Comments*"
             value={displayed.comments}
             onChange={(event) => onEditorChange("comments", event.target.value)}
             error={errors.comments}
@@ -422,18 +478,34 @@ export default function LeakingPropertySection({
               Cancel
             </button>
           )}
-          <button
-            type="button"
-            onClick={onAddOrUpdate}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-700"
-          >
-            <LuHouse className="text-lg" />
-            {isEditing
-              ? "Update Property"
-              : properties.length === 0
-                ? "Add Leak"
-                : "Add Another Leak"}
-          </button>
+          {isEditing ? (
+            <button
+              type="button"
+              onClick={onAddOrUpdate}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-700"
+            >
+              <LuHouse className="text-lg" />
+              Update Leak
+            </button>
+          ) : properties.length === 0 ? (
+            <button
+              type="button"
+              onClick={onSaveAndAddAnother}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-600 px-6 py-2.5 text-base font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              <LuHouse className="text-lg" />
+              Save Leak and Add Another
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onAddOrUpdate}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-700"
+            >
+              <LuHouse className="text-lg" />
+              Add Leak
+            </button>
+          )}
         </div>
 
         {/* Error when no properties added yet at submit time */}
