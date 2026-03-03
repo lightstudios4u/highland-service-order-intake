@@ -518,7 +518,7 @@ export default function EmergencyLeakServiceForm() {
     try {
       const payload = buildServiceOrderRequestPayload(
         formData,
-        '',
+        signatureDataUrl,
         signatureName,
       );
       const submitResult = await submitServiceOrderRequest(payload);

@@ -37,11 +37,21 @@ export default function SignatureSection({
     }
   }, [value]);
 
-  const handleEnd = useCallback(() => {
-    if (sigRef.current && !sigRef.current.isEmpty()) {
-      onChange(sigRef.current.toDataURL("image/png"));
-    }
-  }, [onChange]);
+const handleEnd = useCallback(() => {
+  if (sigRef.current && !sigRef.current.isEmpty()) {
+    const trimmed = sigRef.current.getTrimmedCanvas();
+
+    const scaled = document.createElement("canvas");
+    scaled.width = Math.min(trimmed.width, 400);
+    scaled.height = Math.round(trimmed.height * (scaled.width / trimmed.width));
+    const ctx = scaled.getContext("2d")!;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, scaled.width, scaled.height);
+    ctx.drawImage(trimmed, 0, 0, scaled.width, scaled.height);
+
+    onChange(scaled.toDataURL("image/jpeg", 0.6));
+  }
+}, [onChange]);
 
   function handleClear() {
     sigRef.current?.clear();
